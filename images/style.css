@@ -1,0 +1,87 @@
+/* style.css */
+:root {
+  --brand-gold: #BFA16A;
+  --brand-dark: #373737;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #f3f4f6; /* bg-gray-100 */
+}
+
+.dark body {
+  background-color: #111827; /* dark:bg-gray-900 */
+}
+
+/* Reutilização do estilo do logo animado */
+.logo-symbol {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #4a5568, #2d3748); /* Gradiente para o modo escuro/claro */
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.dark .logo-symbol {
+    background: linear-gradient(135deg, #2d3748, #1a202c);
+}
+
+/* Cores da Marca */
+.bg-brand-gold { background-color: var(--brand-gold); }
+.text-brand-gold { color: var(--brand-gold); }
+.border-brand-gold { border-color: var(--brand-gold); }
+.hover\:bg-brand-gold-dark:hover { background-color: #a68a5a; }
+.bg-brand-dark { background-color: var(--brand-dark); }
+.text-brand-dark { color: var(--brand-dark); }
+
+/* Foco em elementos de formulário */
+.focus\:ring-brand-gold:focus {
+  --tw-ring-color: var(--brand-gold);
+}
+.focus\:border-brand-gold:focus {
+  --tw-border-opacity: 1;
+  border-color: var(--brand-gold);
+}
+
+/* Animações de Modal */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-bg-animate { animation: fadeIn 0.3s ease-out forwards; }
+.modal-content-animate { animation: slideIn 0.3s ease-out forwards; }
+
+
+/* Classes de Formulário Genéricas (para simplificar o HTML) */
+.form-label {
+    @apply block mb-2 text-sm font-medium text-gray-900 dark:text-white;
+}
+.form-input {
+    @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white;
+}
+.form-select {
+    @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white;
+}
+.form-textarea {
+     @apply block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-brand-gold focus:border-brand-gold dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white;
+}
+.form-file {
+    @apply block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400;
+}
+.form-img-preview {
+    @apply hidden mt-2 w-24 h-24 object-cover rounded-lg border dark:border-gray-600;
+}
+
+
+/* Classes de Botão Genéricas */
+.btn-primary {
+    @apply px-6 py-2 text-sm font-medium text-white bg-brand-gold rounded-md hover:bg-brand-gold-dark transition-colors;
+}
+.btn-secondary {
+    @apply px-6 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 transition-colors;
+}
+.btn-danger {
+    @apply px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors;
+}
