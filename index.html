@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EMAF - Controle de Estoque</title>
+    <title>Pontes Consultoria - Gestão</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="icon" href="/images/ponteslogosfundo4.png" type="image/png">
+    <link rel="icon" href="images/ponteslogosfundo4.png" type="image/png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
@@ -16,15 +16,20 @@
     <div id="login-screen" class="flex items-center justify-center min-h-screen px-4">
         <div class="w-full max-w-md p-8 space-y-8 bg-white rounded-xl shadow-lg dark:bg-gray-800">
             <div class="flex flex-col items-center">
-                <div class="logo-symbol mb-4">
-                    <img src="images/ponteslogosfundo4.png" alt="Logo EMAF" class="w-20 h-20 object-contain">
+                <div class="flex flex-col items-center mb-4">
+                    <div class="logo-symbol">
+                        <img src="images/ponteslogosfundo4.png" alt="Logo Pontes Consultoria" class="w-20 h-20 object-contain">
+                    </div>
+                    <div class="text-center mt-4">
+                        <h1 class="text-3xl font-bold text-brand-dark dark:text-gray-200">PONTES</h1>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 -mt-1">CONSULTORIA</p>
+                    </div>
                 </div>
-                <h2 class="text-2xl font-bold text-center text-gray-900 dark:text-white">Acesso ao Sistema EMAF</h2>
-                <p class="text-gray-500 dark:text-gray-400">Controle de Estoque</p>
+                <h2 class="text-2xl font-bold text-center text-gray-900 dark:text-white">Acesse o sistema</h2>
             </div>
             <form id="login-form" class="mt-8 space-y-6">
-                <div><input id="username" name="username" type="text" autocomplete="username" required class="relative block w-full px-3 py-2 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md focus:outline-none focus:ring-brand-gold focus:border-brand-gold sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-500 dark:text-white" placeholder="Usuário"></div>
-                <div><input id="password" name="password" type="password" autocomplete="current-password" required class="relative block w-full px-3 py-2 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-md focus:outline-none focus:ring-brand-gold focus:border-brand-gold sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-500 dark:text-white" placeholder="Senha"></div>
+                <div><input id="username" name="username" type="text" autocomplete="username" required class="relative block w-full px-3 py-2 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-t-md focus:outline-none focus:ring-brand-gold focus:border-brand-gold focus:z-10 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-500 dark:text-white" placeholder="Usuário"></div>
+                <div><input id="password" name="password" type="password" autocomplete="current-password" required class="relative block w-full px-3 py-2 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-b-md focus:outline-none focus:ring-brand-gold focus:border-brand-gold focus:z-10 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-500 dark:text-white" placeholder="Senha"></div>
                 <div><button type="submit" class="relative flex justify-center w-full px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md group bg-brand-dark hover:bg-brand-gold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-gold transition-colors">Entrar</button></div>
             </form>
         </div>
@@ -35,10 +40,10 @@
         <div class="flex h-screen bg-gray-100 dark:bg-gray-900">
             <!-- Barra Lateral -->
             <aside id="sidebar" class="absolute z-30 flex-col items-center w-20 text-white transform -translate-x-full lg:relative lg:flex lg:translate-x-0 transition-transform duration-200 ease-in-out bg-brand-dark dark:bg-gray-800">
-                 <div class="logo-symbol">
-                    <img src="images/ponteslogosfundo.png" alt="Logo EMAF" style="width: 58px; height: 50px; object-fit: contain; position: absolute; left: 18px; top: 15px; z-index: 2; pointer-events: none;" />
+                 <div class="logo-symbol-sidebar">
+                    <img src="images/ponteslogosfundo.png" alt="Logo Pontes Consultoria" style="width: 58px; height: 50px; object-fit: contain;" />
                 </div>
-                <nav class="flex-1 mt-6">
+                <nav class="flex-1">
                     <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg bg-brand-gold text-white" data-target="estoque" title="Estoque"><i class="fas fa-warehouse"></i></a>
                     <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg text-gray-400 hover:bg-brand-gold hover:text-white" data-target="equipe" title="Equipe"><i class="fas fa-users"></i></a>
                     <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg text-gray-400 hover:bg-brand-gold hover:text-white" data-target="clientes" title="Clientes"><i class="fas fa-handshake"></i></a>
@@ -52,7 +57,9 @@
                 <header class="flex items-center justify-between h-20 px-6 bg-white border-b dark:bg-gray-800 dark:border-gray-700">
                     <div class="flex items-center">
                         <button id="sidebar-toggle" class="text-gray-500 dark:text-gray-400 focus:outline-none lg:hidden"><i class="fas fa-bars fa-lg"></i></button>
-                        <h1 class="text-3xl sm:text-4xl font-bold text-gray-800 dark:text-white ml-4 lg:ml-0">EMAF Estoque</h1>
+                        <div class="ml-4 lg:ml-0">
+                            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">Pontes Consultoria</h1>                            
+                        </div>
                     </div>
                     <div class="flex items-center space-x-2 sm:space-x-4">
                         <div class="text-right">
@@ -65,149 +72,167 @@
                 </header>
 
                 <main class="flex-1 p-6 overflow-y-auto">
-                    <!-- Tela de Estoque -->
-                    <div id="estoque" class="page">
-                        <!-- Cabeçalho e Botões -->
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-                            <div>
-                                <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Controle de Estoque</h2>
-                                <p class="text-gray-600 dark:text-gray-300">Gerencie as entradas e saídas de produtos.</p>
-                            </div>
-                            <button id="show-estoque-form" class="bg-brand-gold text-white px-4 py-2 rounded-lg shadow hover:bg-brand-gold-dark transition-colors w-full sm:w-auto">Nova Entrada</button>
-                        </div>
+                    <!-- ======================= TELA DE ESTOQUE ======================= -->
+<div id="estoque" class="page">
+    <div id="estoque-list-container">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+            <div>
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Controle de Estoque</h2>
+                <p class="text-gray-600 dark:text-gray-300">Gerencie as entradas e saídas de produtos.</p>
+            </div>
+            <button id="show-estoque-form" class="bg-brand-gold text-white px-4 py-2 rounded-lg shadow hover:bg-brand-gold-dark transition-colors w-full sm:w-auto flex-shrink-0">Nova Entrada</button>
+        </div>
+        <!-- Filtros Atualizados -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 xl:grid-cols-7 gap-4 mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div><label for="filter-estoque-start-date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">De</label><input type="date" id="filter-estoque-start-date" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
+            <div><label for="filter-estoque-end-date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Até</label><input type="date" id="filter-estoque-end-date" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
+            <div><label for="filter-estoque-cliente" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cliente</label><select id="filter-estoque-cliente" class="cliente-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select></div>
+            <div><label for="filter-estoque-produto" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Produto</label><select id="filter-estoque-produto" class="produto-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select></div>
+            <div><label for="filter-estoque-lote" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Lote</label><input type="text" id="filter-estoque-lote" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
+            <div><label for="filter-estoque-container" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Container</label><select id="filter-estoque-container" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option value="">Todos</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select></div>
+            <div><label for="filter-estoque-status" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Status</label><select id="filter-estoque-status" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option value="">Todos</option><option value="Recebido">Recebido</option><option value="Recusado">Recusado</option></select></div>
+        </div>
+        <!-- Tabela Atualizada (Desktop) -->
+        <div class="relative overflow-x-auto shadow-md sm:rounded-lg hidden md:block">
+            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">Data</th>
+                        <th scope="col" class="px-6 py-3">Cliente</th>
+                        <th scope="col" class="px-6 py-3">Responsável</th>
+                        <th scope="col" class="px-6 py-3">Produto</th>
+                        <th scope="col" class="px-6 py-3">Lote</th>
+                        <th scope="col" class="px-6 py-3">Container</th>
+                        <th scope="col" class="px-6 py-3">Qtde (Kg)</th>
+                        <th scope="col" class="px-6 py-3">Status</th>
+                        <th scope="col" class="px-6 py-3">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="estoque-table-body"></tbody>
+            </table>
+        </div>
+        <!-- Cards (Mobile) -->
+        <div id="estoque-cards-container" class="grid grid-cols-1 gap-4 md:hidden"></div>
+    </div>
 
-                        <!-- Filtros -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
-                            <div><label for="filter-estoque-start-date" class="block mb-2 text-sm font-medium">De</label><input type="date" id="filter-estoque-start-date" class="form-input"></div>
-                            <div><label for="filter-estoque-end-date" class="block mb-2 text-sm font-medium">Até</label><input type="date" id="filter-estoque-end-date" class="form-input"></div>
-                            <div><label for="filter-estoque-cliente" class="block mb-2 text-sm font-medium">Cliente</label><select id="filter-estoque-cliente" class="form-select cliente-select"></select></div>
-                            <div><label for="filter-estoque-produto" class="block mb-2 text-sm font-medium">Produto</label><select id="filter-estoque-produto" class="form-select produto-select"></select></div>
-                            <div><label for="filter-estoque-status" class="block mb-2 text-sm font-medium">Status</label><select id="filter-estoque-status" class="form-select"><option value="">Todos</option><option value="Recebido">Recebido</option><option value="Recusado">Recusado</option></select></div>
-                        </div>
+    <!-- Formulário de Estoque Atualizado (oculto) -->
+    <div id="estoque-form-container" class="hidden mt-6 p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+        <h3 id="estoque-form-title" class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Nova Entrada no Estoque</h3>
+        <form id="estoque-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <input type="hidden" id="estoque-Id">
+            
+            <div><label for="estoque-Emaf_Equipe" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Responsável</label><select id="estoque-Emaf_Equipe" class="equipe-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required disabled></select></div>
+            <div><label for="estoque-Data" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Data e Hora</label><input type="datetime-local" id="estoque-Data" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required disabled></div>
+            
+            <div><label for="estoque-Emaf_Clientes" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cliente</label><select id="estoque-Emaf_Clientes" class="cliente-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required></select></div>
+            <div><label for="estoque-Emaf_Produto" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Produto</label><select id="estoque-Emaf_Produto" class="produto-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required></select></div>
+            
+            <div><label for="estoque-Lote" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Lote</label><input type="text" id="estoque-Lote" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required></div>
+            <div><label for="estoque-Etiqueta" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Foto da Etiqueta</label><input type="file" id="estoque-Etiqueta" class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" required> <img id="estoque-Etiqueta-preview" class="hidden mt-2 w-24 h-24 object-cover rounded-lg border dark:border-gray-600"></div>
 
-                        <!-- Tabela (Desktop) -->
-                        <div class="relative overflow-x-auto shadow-md sm:rounded-lg hidden md:block">
-                            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
-                                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
-                                    <tr>
-                                        <th scope="col" class="px-6 py-3">Produto</th>
-                                        <th scope="col" class="px-6 py-3">Cliente</th>
-                                        <th scope="col" class="px-6 py-3">Responsável</th>
-                                        <th scope="col" class="px-6 py-3">Data</th>
-                                        <th scope="col" class="px-6 py-3">Qtde (Kg)</th>
-                                        <th scope="col" class="px-6 py-3">Status</th>
-                                        <th scope="col" class="px-6 py-3">Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="estoque-table-body"></tbody>
-                            </table>
-                        </div>
-                        <!-- Cards (Mobile) -->
-                        <div id="estoque-cards-container" class="grid grid-cols-1 gap-4 md:hidden"></div>
+            <div><label for="estoque-Quantidade" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Quantidade (Kg)</label><input type="text" inputmode="decimal" id="estoque-Quantidade" placeholder="Ex: 450,50" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required></div>
+            <div><label for="estoque-Container" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Container</label><select id="estoque-Container" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required><option value="">Selecione</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select></div>
+            
+            <div class="md:col-span-2"><label for="estoque-Status" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Status</label><select id="estoque-Status" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required><option value="Recebido">Recebido</option><option value="Recusado">Recusado</option></select></div>
+            <div class="md:col-span-2"><label for="estoque-Observacao" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Observação</label><textarea id="estoque-Observacao" rows="3" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-brand-gold focus:border-brand-gold dark:bg-gray-700 dark:border-gray-600 dark:text-white"></textarea></div>
+            
+            <!-- Campos Condicionais para Status "Recusado" -->
+            <div id="recusado-fotos-container" class="hidden md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                <div><label for="estoque-Foto_Produto" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Foto do Produto</label><input type="file" id="estoque-Foto_Produto" class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"> <img id="estoque-Foto_Produto-preview" class="hidden mt-2 w-24 h-24 object-cover rounded-lg border dark:border-gray-600"></div>
+                <div><label for="estoque-Foto_Local" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Foto do Local</label><input type="file" id="estoque-Foto_Local" class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"> <img id="estoque-Foto_Local-preview" class="hidden mt-2 w-24 h-24 object-cover rounded-lg border dark:border-gray-600"></div>
+                <div><label for="estoque-Foto_Veiculo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Foto do Veículo</label><input type="file" id="estoque-Foto_Veiculo" class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"> <img id="estoque-Foto_Veiculo-preview" class="hidden mt-2 w-24 h-24 object-cover rounded-lg border dark:border-gray-600"></div>
+            </div>
+            
+            <div class="md:col-span-2 flex justify-end space-x-4">
+                <button type="button" id="cancel-estoque-form" class="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-brand-gold rounded-md hover:bg-brand-gold-dark transition-colors">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
 
-                        <!-- Formulário de Estoque (oculto) -->
-                        <div id="estoque-form-container" class="hidden mt-6 p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
-                            <h3 id="estoque-form-title" class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Nova Entrada no Estoque</h3>
-                            <form id="estoque-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <input type="hidden" id="estoque-id">
-                                <div><label for="estoque-equipe" class="form-label">Responsável</label><select id="estoque-equipe" class="form-select equipe-select" required></select></div>
-                                <div><label for="estoque-cliente" class="form-label">Cliente</label><select id="estoque-cliente" class="form-select cliente-select" required></select></div>
-                                <div><label for="estoque-produto" class="form-label">Produto</label><select id="estoque-produto" class="form-select produto-select" required></select></div>
-                                <div><label for="estoque-data" class="form-label">Data e Hora</label><input type="datetime-local" id="estoque-data" class="form-input" required></div>
-                                <div><label for="estoque-lote" class="form-label">Lote</label><input type="text" id="estoque-lote" class="form-input" required></div>
-                                <div><label for="estoque-qtde" class="form-label">Quantidade (Kg)</label><input type="number" step="0.01" id="estoque-qtde" class="form-input" required></div>
-                                <div><label for="estoque-container" class="form-label">Container</label><select id="estoque-container" class="form-select" required><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select></div>
-                                <div><label for="estoque-status" class="form-label">Status</label><select id="estoque-status" class="form-select" required><option value="Recebido">Recebido</option><option value="Recusado">Recusado</option></select></div>
-                                <div class="md:col-span-2"><label for="estoque-observacao" class="form-label">Observação</label><textarea id="estoque-observacao" rows="3" class="form-textarea"></textarea></div>
-                                <div><label for="estoque-etiqueta" class="form-label">Foto da Etiqueta</label><input type="file" id="estoque-etiqueta" class="form-file"> <img id="estoque-etiqueta-preview" class="form-img-preview"></div>
-                                <div><label for="estoque-foto-produto" class="form-label">Foto do Produto</label><input type="file" id="estoque-foto-produto" class="form-file"> <img id="estoque-foto-produto-preview" class="form-img-preview"></div>
-                                <div><label for="estoque-foto-local" class="form-label">Foto do Local</label><input type="file" id="estoque-foto-local" class="form-file"> <img id="estoque-foto-local-preview" class="form-img-preview"></div>
-                                <div><label for="estoque-foto-veiculo" class="form-label">Foto do Veículo</label><input type="file" id="estoque-foto-veiculo" class="form-file"> <img id="estoque-foto-veiculo-preview" class="form-img-preview"></div>
-                                
-                                <div class="md:col-span-2 flex justify-end space-x-4">
-                                    <button type="button" id="cancel-estoque-form" class="btn-secondary">Cancelar</button>
-                                    <button type="submit" class="btn-primary">Salvar</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
-                    <!-- Tela de Equipe -->
+                    <!-- ======================= TELA DE EQUIPE ======================= -->
                     <div id="equipe" class="page hidden">
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-                             <div>
-                                <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Equipe</h2>
-                                <p class="text-gray-600 dark:text-gray-300">Gerenciamento de usuários do sistema.</p>
+                        <div id="equipe-list-container">
+                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                                <div>
+                                    <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Equipe</h2>
+                                    <p class="text-gray-600 dark:text-gray-300">Gerenciamento de usuários do sistema.</p>
+                                </div>
+                                <div class="relative w-full sm:w-auto"><input type="text" id="equipe-search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full pl-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" placeholder="Buscar por nome..."><div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><i class="fas fa-search text-gray-400"></i></div></div>
+                                <button id="show-equipe-form" class="bg-brand-gold text-white px-4 py-2 rounded-lg shadow hover:bg-brand-gold-dark transition-colors w-full sm:w-auto flex-shrink-0">Novo Membro</button>
                             </div>
-                            <input type="text" id="equipe-search" class="form-input w-full sm:w-auto" placeholder="Buscar por nome...">
-                            <button id="show-equipe-form" class="bg-brand-gold text-white px-4 py-2 rounded-lg shadow hover:bg-brand-gold-dark transition-colors w-full sm:w-auto">Novo Membro</button>
+                            <div id="equipe-cards-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
                         </div>
-                        <div id="equipe-cards-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
                         <div id="equipe-form-container" class="hidden mt-6 p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
                              <h3 id="equipe-form-title" class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Novo Membro</h3>
                              <form id="equipe-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <input type="hidden" id="equipe-id">
+                                <input type="hidden" id="equipe-Id">
                                 <div class="md:col-span-2 flex items-center space-x-4">
-                                    <img id="equipe-foto-preview" src="https://placehold.co/100x100/e2e8f0/cbd5e0?text=Foto" class="w-24 h-24 rounded-full object-cover">
-                                    <input type="file" id="equipe-foto" class="form-file">
+                                    <img id="equipe-Foto-preview" src="https://placehold.co/100x100/e2e8f0/cbd5e0?text=Foto" class="w-24 h-24 rounded-full object-cover">
+                                    <input type="file" id="equipe-Foto" class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400">
                                 </div>
-                                <div><label for="equipe-nome" class="form-label">Nome</label><input type="text" id="equipe-nome" class="form-input" required></div>
-                                <div><label for="equipe-login" class="form-label">Login</label><input type="text" id="equipe-login" class="form-input" required></div>
-                                <div><label for="equipe-senha" class="form-label">Senha</label><input type="password" id="equipe-senha" class="form-input"></div>
-                                <div><label for="equipe-role" class="form-label">Função</label><select id="equipe-role" class="form-select"><option value="Admin">Admin</option><option value="Gestão">Gestão</option><option value="Produção">Produção</option></select></div>
+                                <div><label for="equipe-Nome" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nome</label><input type="text" id="equipe-Nome" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" required></div>
+                                <div><label for="equipe-Login" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Login</label><input type="text" id="equipe-Login" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" required></div>
+                                <div><label for="equipe-Senha" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Senha</label><input type="password" id="equipe-Senha" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" placeholder="Deixe em branco para não alterar"></div>
+                                <div><label for="equipe-Role" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Função</label><select id="equipe-Role" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required><option value="">Selecione...</option><option value="Admin">Admin</option><option value="Gestão">Gestão</option><option value="Produção">Produção</option></select></div>
                                 <div class="md:col-span-2 flex justify-end space-x-4">
-                                    <button type="button" id="cancel-equipe-form" class="btn-secondary">Cancelar</button>
-                                    <button type="submit" class="btn-primary">Salvar</button>
+                                    <button type="button" id="cancel-equipe-form" class="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                                    <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-brand-gold rounded-md hover:bg-brand-gold-dark transition-colors">Salvar</button>
                                 </div>
                             </form>
                         </div>
                     </div>
 
-                    <!-- Tela de Clientes -->
+                    <!-- ====================== TELA DE CLIENTES ====================== -->
                     <div id="clientes" class="page hidden">
-                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-                             <div>
-                                <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Clientes</h2>
-                                <p class="text-gray-600 dark:text-gray-300">Gerenciamento de clientes.</p>
+                         <div id="clientes-list-container">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                                <div>
+                                    <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Clientes</h2>
+                                    <p class="text-gray-600 dark:text-gray-300">Gerenciamento de clientes.</p>
+                                </div>
+                                <div class="relative w-full sm:w-auto"><input type="text" id="clientes-search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full pl-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" placeholder="Buscar por cliente..."><div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><i class="fas fa-search text-gray-400"></i></div></div>
+                                <button id="show-clientes-form" class="bg-brand-gold text-white px-4 py-2 rounded-lg shadow hover:bg-brand-gold-dark transition-colors w-full sm:w-auto flex-shrink-0">Novo Cliente</button>
                             </div>
-                            <input type="text" id="clientes-search" class="form-input w-full sm:w-auto" placeholder="Buscar por cliente...">
-                            <button id="show-clientes-form" class="bg-brand-gold text-white px-4 py-2 rounded-lg shadow hover:bg-brand-gold-dark transition-colors w-full sm:w-auto">Novo Cliente</button>
+                            <div id="clientes-cards-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
                         </div>
-                        <div id="clientes-cards-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
                         <div id="clientes-form-container" class="hidden mt-6 p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
                              <h3 id="clientes-form-title" class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Novo Cliente</h3>
                              <form id="clientes-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <input type="hidden" id="clientes-id">
-                                <div><label for="clientes-cliente" class="form-label">Cliente</label><input type="text" id="clientes-cliente" class="form-input" required></div>
-                                <div><label for="clientes-cnpj" class="form-label">CNPJ</label><input type="text" id="clientes-cnpj" class="form-input"></div>
-                                <div class="md:col-span-2"><label for="clientes-razao" class="form-label">Razão Social</label><input type="text" id="clientes-razao" class="form-input"></div>
+                                <input type="hidden" id="clientes-Id">
+                                <div><label for="clientes-Cliente" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nome Fantasia (Cliente)</label><input type="text" id="clientes-Cliente" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" required></div>
+                                <div><label for="clientes-Cnpj" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">CNPJ</label><input type="text" id="clientes-Cnpj" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"></div>
+                                <div class="md:col-span-2"><label for="clientes-Razao_Social" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Razão Social</label><input type="text" id="clientes-Razao_Social" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"></div>
                                 <div class="md:col-span-2 flex justify-end space-x-4">
-                                    <button type="button" id="cancel-clientes-form" class="btn-secondary">Cancelar</button>
-                                    <button type="submit" class="btn-primary">Salvar</button>
+                                    <button type="button" id="cancel-clientes-form" class="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                                    <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-brand-gold rounded-md hover:bg-brand-gold-dark transition-colors">Salvar</button>
                                 </div>
                             </form>
                         </div>
                     </div>
 
-                    <!-- Tela de Produtos -->
+                    <!-- ======================= TELA DE PRODUTOS ======================= -->
                     <div id="produtos" class="page hidden">
-                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-                             <div>
-                                <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Produtos</h2>
-                                <p class="text-gray-600 dark:text-gray-300">Cadastro de tipos de produtos.</p>
+                         <div id="produtos-list-container">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                                <div>
+                                    <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Produtos</h2>
+                                    <p class="text-gray-600 dark:text-gray-300">Cadastro de tipos de produtos.</p>
+                                </div>
+                                <div class="relative w-full sm:w-auto"><input type="text" id="produtos-search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full pl-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" placeholder="Buscar por produto..."><div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><i class="fas fa-search text-gray-400"></i></div></div>
+                                <button id="show-produtos-form" class="bg-brand-gold text-white px-4 py-2 rounded-lg shadow hover:bg-brand-gold-dark transition-colors w-full sm:w-auto flex-shrink-0">Novo Produto</button>
                             </div>
-                            <input type="text" id="produtos-search" class="form-input w-full sm:w-auto" placeholder="Buscar por produto...">
-                            <button id="show-produtos-form" class="bg-brand-gold text-white px-4 py-2 rounded-lg shadow hover:bg-brand-gold-dark transition-colors w-full sm:w-auto">Novo Produto</button>
+                            <div id="produtos-cards-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
                         </div>
-                        <div id="produtos-cards-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
                         <div id="produtos-form-container" class="hidden mt-6 p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
                              <h3 id="produtos-form-title" class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Novo Produto</h3>
                              <form id="produtos-form" class="space-y-4">
-                                <input type="hidden" id="produtos-id">
-                                <div><label for="produtos-produto" class="form-label">Nome do Produto</label><input type="text" id="produtos-produto" class="form-input" required></div>
+                                <input type="hidden" id="produtos-Id">
+                                <div><label for="produtos-Produto" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nome do Produto</label><input type="text" id="produtos-Produto" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" required></div>
                                 <div class="flex justify-end space-x-4">
-                                    <button type="button" id="cancel-produtos-form" class="btn-secondary">Cancelar</button>
-                                    <button type="submit" class="btn-primary">Salvar</button>
+                                    <button type="button" id="cancel-produtos-form" class="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                                    <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-brand-gold rounded-md hover:bg-brand-gold-dark transition-colors">Salvar</button>
                                 </div>
                             </form>
                         </div>
@@ -225,9 +250,9 @@
                 <button id="close-modal" class="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white text-3xl leading-none">&times;</button>
             </div>
             <div id="modal-content" class="mt-4 space-y-2 text-gray-700 dark:text-gray-300 max-h-96 overflow-y-auto"></div>
-            <div id="details-modal-actions" class="flex justify-end mt-6 space-x-4">
-                <button id="delete-btn" class="btn-danger">Apagar</button>
-                <button id="edit-btn" class="btn-primary">Editar</button>
+            <div id="details-modal-actions" class="flex justify-end mt-6 space-x-4 hidden">
+                <button id="edit-btn" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">Editar</button>
+                <button id="delete-btn" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">Apagar</button>
             </div>
         </div>
     </div>
@@ -237,8 +262,8 @@
             <h2 class="text-xl font-bold text-gray-900 dark:text-white">Confirmar Exclusão</h2>
             <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Você tem certeza? Esta ação não pode ser desfeita.</p>
             <div class="flex justify-end mt-6 space-x-4">
-                <button id="cancel-delete-btn" class="btn-secondary">Cancelar</button>
-                <button id="confirm-delete-btn" class="btn-danger">Apagar</button>
+                <button id="cancel-delete-btn" class="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">Cancelar</button>
+                <button id="confirm-delete-btn" class="px-6 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">Apagar</button>
             </div>
         </div>
     </div>
@@ -248,14 +273,14 @@
             <h2 class="text-xl font-bold text-gray-900 dark:text-white">Confirmar Saída</h2>
             <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Deseja realmente sair do sistema?</p>
             <div class="flex justify-end mt-6 space-x-4">
-                <button id="cancel-logout-btn" class="btn-secondary">Cancelar</button>
-                <button id="confirm-logout-btn" class="btn-danger">Sair</button>
+                <button id="cancel-logout-btn" class="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">Cancelar</button>
+                <button id="confirm-logout-btn" class="px-6 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">Sair</button>
             </div>
         </div>
     </div>
     
     <!-- Overlay de Carregamento -->
-    <div id="loading-overlay" class="fixed inset-0 z-[100] flex-col items-center justify-center bg-black bg-opacity-60 hidden">
+    <div id="loading-overlay" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black bg-opacity-60 hidden">
         <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-brand-gold"></div>
         <p id="loading-text" class="text-white text-lg mt-4">Carregando...</p>
     </div>
@@ -263,3 +288,4 @@
     <script src="script.js"></script>
 </body>
 </html>
+

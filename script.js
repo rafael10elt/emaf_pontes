@@ -1,10 +1,10 @@
 document.addEventListener('DOMContentLoaded', function() {
     // --- Configuração da API ---
-    // Substitua pela sua URL da função Netlify e URL base do NocoDB
-    const API_URL = '/.netlify/functions/api';
-    const API_TOKEN = null; // O token será tratado pela função Netlify
-    const NocoDB_BaseURL = 'https://lumitechia-nocodb.aeenwc.easypanel.host';
-
+    // !!! IMPORTANTE: Substitua 'SEU_TOKEN_AQUI' pelo seu token de API do NocoDB !!!
+    const API_TOKEN = '7R5Yye4OCWOamPHtGItYUjd4EL8H90dLP4HUsYzv'; 
+    const NOCODB_BASE_URL = 'https://lumitechia-nocodb.aeenwc.easypanel.host';
+    const NOCODB_PROJECT_PATH = '/api/v1/db/data/noco/Consultoria_DB';
+    
     // --- Variáveis Globais de Dados ---
     let equipeData = [];
     let clientesData = [];
@@ -13,15 +13,23 @@ document.addEventListener('DOMContentLoaded', function() {
     let loggedInUser = null;
 
     // --- Variáveis de Estado da UI ---
-    let activeCard = null; // Para cards de Equipe, Clientes, Produtos
-    let activeTableRow = null; // Para linhas da tabela de Estoque
     let activeDeleteItem = { id: null, type: null, element: null };
+
+    // --- Mapeamento de Nomes de Tabela ---
+    const TABLE_NAME_MAP = {
+        equipe: 'Emaf_Equipe',
+        clientes: 'Emaf_Clientes',
+        produtos: 'Emaf_Produto',
+        estoque: 'Emaf_Estoque'
+    };
 
     // --- Mapeamento de Nomes de Campos para Rótulos Amigáveis ---
     const GLOBAL_LABEL_MAP = {
         nome: 'Nome',
         login: 'Login',
+        senha: 'Senha',
         role: 'Função',
+        foto: 'Foto',
         cliente: 'Cliente',
         cnpj: 'CNPJ',
         razao_social: 'Razão Social',
@@ -29,36 +37,77 @@ document.addEventListener('DOMContentLoaded', function() {
         emaf_equipe: 'Responsável',
         emaf_clientes: 'Cliente',
         emaf_produto: 'Produto',
-        data: 'Data',
+        data: 'Data e Hora',
         lote: 'Lote',
-        etiqueta: 'Etiqueta',
-        qtde: 'Quantidade (Kg)',
+        etiqueta: 'Foto da Etiqueta',
+        quantidade: 'Quantidade (Kg)',
         container: 'Container',
         status: 'Status',
         observacao: 'Observação',
         foto_produto: 'Foto do Produto',
         foto_local: 'Foto do Local',
-        foto_veiculo: 'Foto do Veículo'
+        foto_veiculo: 'Foto do Veículo',
+        createdat: 'Criado em',
+        updatedat: 'Alterado em'
     };
 
-
     // --- Funções de API e Utilitários ---
+    function showModal(modalElement) {
+        modalElement?.classList.replace('hidden', 'flex');
+    }
 
+    function hideModal(modalElement) {
+        modalElement?.classList.replace('flex', 'hidden');
+    }
+
+    // --- ADICIONE A FUNÇÃO ABAIXO ---
+    function showImageModal(src) {
+        // Remove qualquer modal de imagem que já esteja aberto
+        const existingModal = document.getElementById('image-zoom-modal');
+        if (existingModal) {
+            document.body.removeChild(existingModal);
+        }
+
+        // Cria o elemento de overlay (fundo escuro)
+        const overlay = document.createElement('div');
+        overlay.id = 'image-zoom-modal';
+        overlay.className = 'fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-80 cursor-pointer modal-bg-animate';
+        
+        // Cria o elemento da imagem
+        const img = document.createElement('img');
+        img.src = src;
+        img.className = 'max-w-[90vw] max-h-[90vh] object-contain';
+        
+        overlay.appendChild(img);
+        
+        // Adiciona um evento para fechar o modal ao clicar em qualquer lugar
+        overlay.addEventListener('click', () => {
+            document.body.removeChild(overlay);
+        });
+        
+        document.body.appendChild(overlay);
+    }
     async function nocoFetch(endpoint, options = {}) {
+        if (!API_TOKEN || API_TOKEN === 'SEU_TOKEN_AQUI') {
+             alert('ERRO: Token da API não configurado no arquivo script.js. Por favor, adicione seu token do NocoDB.');
+             hideLoadingOverlay();
+             return null;
+        }
         try {
             const separator = endpoint.includes('?') ? '&' : '?';
-            const urlWithLimit = `${API_URL}/${endpoint}${separator}limit=2000`; // Aumentado o limite
+            const fullUrl = `${NOCODB_BASE_URL}${NOCODB_PROJECT_PATH}/${endpoint}${separator}limit=2000`;
 
-            const response = await fetch(urlWithLimit, {
+            const response = await fetch(fullUrl, {
                 ...options,
                 headers: {
                     'Content-Type': 'application/json',
+                    'xc-token': API_TOKEN,
                     ...options.headers,
                 },
             });
             if (!response.ok) {
                 const errorData = await response.json();
-                const errorMessage = errorData.msg || (Array.isArray(errorData) && errorData[0] ? errorData[0].msg : response.statusText);
+                const errorMessage = `HTTP ${response.status}: ${errorData.msg || response.statusText}`;
                 throw new Error(errorMessage);
             }
             if (options.method === 'DELETE' || response.status === 204) {
@@ -67,43 +116,34 @@ document.addEventListener('DOMContentLoaded', function() {
             return await response.json();
         } catch (error) {
             console.error(`Falha no fetch para ${endpoint}:`, error);
-            alert(`Ocorreu um erro de comunicação com o servidor. Detalhes: ${error.message}`);
+            alert(`Ocorreu um erro de comunicação com o servidor. Verifique o console (F12) para mais detalhes.\n\nDetalhes: ${error.message}`);
+            hideLoadingOverlay(); 
             return null;
         }
     }
 
-    async function uploadFile(tableName, columnName, file) {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = async () => {
-                try {
-                    const base64File = reader.result.split(',')[1];
-                    const projectPath = 'Consultoria_DB';
-                    const path = `${projectPath}/${tableName}/${columnName}`;
-
-                    const response = await fetch('/.netlify/functions/upload', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            file: base64File,
-                            fileName: file.name,
-                            fileType: file.type,
-                            path: path,
-                        }),
-                    });
-
-                    if (!response.ok) throw new Error('Falha no upload do servidor.');
-                    const result = await response.json();
-                    resolve(Array.isArray(result) ? result[0] : result);
-                } catch (err) {
-                    console.error("Erro no upload: ", err);
-                    reject(err);
-                }
-            };
-            reader.onerror = error => reject(error);
-        });
-    }
+     async function uploadFile(tableName, columnName, file) {
+         const formData = new FormData();
+         formData.append('file', file);
+         const uploadUrl = `${NOCODB_BASE_URL}/api/v1/db/storage/upload?path=Consultoria_DB/${tableName}/${columnName}`;
+         try {
+             const response = await fetch(uploadUrl, {
+                 method: 'POST',
+                 headers: { 'xc-token': API_TOKEN },
+                 body: formData
+             });
+             if (!response.ok) {
+                 const errorText = await response.text();
+                 throw new Error(`Falha no upload do arquivo: ${errorText}`);
+             }
+             const result = await response.json();
+             return Array.isArray(result) ? result[0] : result;
+         } catch (error) {
+             console.error(`Erro no upload para ${tableName}/${columnName}:`, error);
+             alert(`Ocorreu um erro ao enviar o arquivo. Detalhes: ${error.message}`);
+             return null;
+         }
+     }
 
     function showLoadingOverlay(message = 'Carregando...') {
         document.getElementById('loading-text').textContent = message;
@@ -123,7 +163,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- Funções de Carregamento de Dados ---
-
     async function fetchAllData() {
         showLoadingOverlay('Carregando dados do sistema...');
         await Promise.all([
@@ -133,15 +172,11 @@ document.addEventListener('DOMContentLoaded', function() {
             fetchEstoque()
         ]);
         
-        // Popula os selects dos filtros e formulários
         populateSelects();
-
-        // Renderiza as telas
         applyAndRenderEquipe();
         applyAndRenderClientes();
         applyAndRenderProdutos();
         applyAndRenderEstoque();
-
         hideLoadingOverlay();
     }
 
@@ -150,39 +185,37 @@ document.addEventListener('DOMContentLoaded', function() {
         equipeData = (result && result.list) ? result.list.sort((a, b) => a.Nome.localeCompare(b.Nome)) : [];
     }
     async function fetchClientes() {
-        const result = await nocoFetch('Emaf_Clientes?nested[all]=true');
+        const result = await nocoFetch('Emaf_Clientes');
         clientesData = (result && result.list) ? result.list.sort((a, b) => a.Cliente.localeCompare(b.Cliente)) : [];
     }
     async function fetchProdutos() {
-        const result = await nocoFetch('Emaf_Produto?nested[all]=true');
+        const result = await nocoFetch('Emaf_Produto');
         produtosData = (result && result.list) ? result.list.sort((a, b) => a.Produto.localeCompare(b.Produto)) : [];
     }
     async function fetchEstoque() {
         const result = await nocoFetch('Emaf_Estoque?nested[all]=true');
-        estoqueData = (result && result.list) ? result.list : [];
+        estoqueData = (result && result.list) ? result.list.sort((a, b) => new Date(b.Data) - new Date(a.Data)) : [];
     }
 
     // --- Autenticação e Sessão ---
-
     async function handleLogin(e) {
         e.preventDefault();
         const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
-        if (!username || !password) {
-            alert('Por favor, preencha usuário e senha.');
-            return;
-        }
+        if (!username || !password) return alert('Por favor, preencha usuário e senha.');
+
         showLoadingOverlay('Autenticando...');
         
         const endpoint = `Emaf_Equipe?where=(Login,eq,${username})~and(Senha,eq,${password})`;
         const result = await nocoFetch(endpoint);
-        const user = (result && result.list && result.list.length > 0) ? result.list[0] : null;
+        
+        hideLoadingOverlay();
 
-        if (user) {
+        if (result && result.list && result.list.length > 0) {
+            const user = result.list[0];
             sessionStorage.setItem('loggedInUser', JSON.stringify(user));
             await initializeUserSession(user);
         } else {
-            hideLoadingOverlay();
             alert('Usuário ou senha inválidos.');
         }
     }
@@ -193,41 +226,40 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('logged-user-role').textContent = loggedInUser.Role;
 
         const userAvatar = document.querySelector('#main-app header img');
-        if (userAvatar && loggedInUser.Foto && loggedInUser.Foto[0]?.signedPath) {
-            userAvatar.src = `${NocoDB_BaseURL}/${loggedInUser.Foto[0].signedPath}`;
+        if (userAvatar && loggedInUser.Foto && loggedInUser.Foto.length > 0 && loggedInUser.Foto[0]?.signedPath) {
+            userAvatar.src = `${NOCODB_BASE_URL}/${loggedInUser.Foto[0].signedPath}`;
+        } else {
+            userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(loggedInUser.Nome)}&background=BFA16A&color=fff`;
         }
 
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('main-app').classList.remove('hidden');
 
-        // Controle de acesso a funcionalidades
         const isGestaoOrAdmin = ['Admin', 'Gestão'].includes(loggedInUser.Role);
         document.querySelectorAll('#show-equipe-form, #show-clientes-form, #show-produtos-form').forEach(btn => {
             btn.style.display = isGestaoOrAdmin ? 'block' : 'none';
         });
+        document.getElementById('show-estoque-form').style.display = 'block';
 
         await fetchAllData();
         navigateTo(sessionStorage.getItem('currentPage') || 'estoque');
-        hideLoadingOverlay();
     }
 
     async function checkSession() {
         const userString = sessionStorage.getItem('loggedInUser');
         if (userString) {
-            showLoadingOverlay('Restaurando sessão...');
             await initializeUserSession(JSON.parse(userString));
         }
     }
 
     // --- Funções de Navegação e UI ---
-
     function navigateTo(targetId) {
         document.querySelectorAll('.page').forEach(page => page.classList.add('hidden'));
         document.getElementById(targetId)?.classList.remove('hidden');
         
         document.querySelectorAll('.nav-link').forEach(l => {
             l.classList.remove('bg-brand-gold', 'text-white');
-            l.classList.add('text-gray-400');
+            l.classList.add('text-gray-400', 'hover:bg-brand-gold', 'hover:text-white');
         });
         const navLink = document.querySelector(`.nav-link[data-target="${targetId}"]`);
         navLink?.classList.add('bg-brand-gold', 'text-white');
@@ -239,7 +271,32 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('sidebar').classList.toggle('-translate-x-full');
         document.getElementById('sidebar-overlay').classList.toggle('hidden');
     }
-    
+    function toggleRecusadoFields() {
+        const statusSelect = document.getElementById('estoque-Status');
+        const fotosContainer = document.getElementById('recusado-fotos-container');
+        const fotoProdutoInput = document.getElementById('estoque-Foto_Produto');
+        const fotoLocalInput = document.getElementById('estoque-Foto_Local');
+        const fotoVeiculoInput = document.getElementById('estoque-Foto_Veiculo');
+        const etiquetaInput = document.getElementById('estoque-Etiqueta');
+        
+        // Etiqueta é sempre obrigatória na criação, mas não na edição se já existir
+        const estoqueId = document.getElementById('estoque-Id').value;
+        const currentItem = estoqueId ? estoqueData.find(d => d.Id == estoqueId) : null;
+        etiquetaInput.required = !currentItem || !(currentItem.Etiqueta && currentItem.Etiqueta.length > 0);
+
+        if (statusSelect.value === 'Recusado') {
+            fotosContainer.classList.remove('hidden');
+            // Torna obrigatório apenas se não estiver editando um item que já tem a foto
+            fotoProdutoInput.required = !currentItem || !(currentItem.Foto_Produto && currentItem.Foto_Produto.length > 0);
+            fotoLocalInput.required = !currentItem || !(currentItem.Foto_Local && currentItem.Foto_Local.length > 0);
+            fotoVeiculoInput.required = !currentItem || !(currentItem.Foto_Veiculo && currentItem.Foto_Veiculo.length > 0);
+        } else {
+            fotosContainer.classList.add('hidden');
+            fotoProdutoInput.required = false;
+            fotoLocalInput.required = false;
+            fotoVeiculoInput.required = false;
+        }
+    }
     function populateSelects() {
         const createOptions = (data, valueField, textField, defaultText) => {
             let options = `<option value="">${defaultText}</option>`;
@@ -250,89 +307,89 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         document.querySelectorAll('.equipe-select').forEach(el => el.innerHTML = createOptions(equipeData, 'Id', 'Nome', 'Selecione...'));
-        document.querySelectorAll('.cliente-select').forEach(el => el.innerHTML = createOptions(clientesData, 'Id', 'Cliente', 'Selecione...'));
-        document.querySelectorAll('.produto-select').forEach(el => el.innerHTML = createOptions(produtosData, 'Id', 'Produto', 'Selecione...'));
+        document.querySelectorAll('.cliente-select').forEach(el => el.innerHTML = createOptions(clientesData, 'Id', 'Cliente', 'Todos'));
+        document.querySelectorAll('.produto-select').forEach(el => el.innerHTML = createOptions(produtosData, 'Id', 'Produto', 'Todos'));
     }
 
     // --- Renderização de Conteúdo ---
-
     function applyAndRenderEquipe() {
         const searchTerm = document.getElementById('equipe-search').value.toLowerCase();
         const filtered = equipeData.filter(e => e.Nome.toLowerCase().includes(searchTerm));
         renderCards('equipe', filtered);
     }
-
     function applyAndRenderClientes() {
         const searchTerm = document.getElementById('clientes-search').value.toLowerCase();
         const filtered = clientesData.filter(c => c.Cliente.toLowerCase().includes(searchTerm));
         renderCards('clientes', filtered);
     }
-
     function applyAndRenderProdutos() {
         const searchTerm = document.getElementById('produtos-search').value.toLowerCase();
         const filtered = produtosData.filter(p => p.Produto.toLowerCase().includes(searchTerm));
         renderCards('produtos', filtered);
     }
-
-    function applyAndRenderEstoque() {
+   function applyAndRenderEstoque() {
         const startDate = document.getElementById('filter-estoque-start-date').value;
         const endDate = document.getElementById('filter-estoque-end-date').value;
         const clienteId = document.getElementById('filter-estoque-cliente').value;
         const produtoId = document.getElementById('filter-estoque-produto').value;
         const status = document.getElementById('filter-estoque-status').value;
+        const lote = document.getElementById('filter-estoque-lote').value.toLowerCase();
+        const container = document.getElementById('filter-estoque-container').value;
 
         const filtered = estoqueData.filter(item => 
             (!startDate || item.Data.slice(0, 10) >= startDate) &&
             (!endDate || item.Data.slice(0, 10) <= endDate) &&
             (!clienteId || item.Emaf_Clientes?.Id == clienteId) &&
             (!produtoId || item.Emaf_Produto?.Id == produtoId) &&
-            (!status || item.Status === status)
+            (!status || item.Status === status) &&
+            (!lote || (item.Lote || '').toLowerCase().includes(lote)) &&
+            (!container || item.Container === container)
         );
-
         renderEstoque(filtered);
     }
 
     function renderCards(type, data) {
         const container = document.getElementById(`${type}-cards-container`);
         if (!container) return;
+        container.innerHTML = data.map(item => createGenericCard(type, item)).join('');
+    }
 
-        container.innerHTML = data.map(item => {
-            let title, subtitle, fotoUrl;
-            switch(type) {
-                case 'equipe':
-                    title = item.Nome;
-                    subtitle = item.Role;
-                    fotoUrl = (item.Foto && item.Foto[0]?.signedPath) ? `${NocoDB_BaseURL}/${item.Foto[0].signedPath}` : `https://i.pravatar.cc/150?u=${item.Login}`;
-                    break;
-                case 'clientes':
-                    title = item.Cliente;
-                    subtitle = item.Cnpj || 'Sem CNPJ';
-                    fotoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.Cliente)}&background=BFA16A&color=fff`;
-                    break;
-                case 'produtos':
-                    title = item.Produto;
-                    subtitle = `ID: ${item.Id}`;
-                    fotoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.Produto)}&background=373737&color=fff`;
-                    break;
-            }
+    function createGenericCard(type, item) {
+        let title, subtitle, fotoUrl;
+        switch(type) {
+            case 'equipe':
+                title = item.Nome;
+                subtitle = item.Role;
+                fotoUrl = (item.Foto && item.Foto[0]?.signedPath) ? `${NOCODB_BASE_URL}/${item.Foto[0].signedPath}` : `https://ui-avatars.com/api/?name=${encodeURIComponent(item.Nome)}&background=BFA16A&color=fff`;
+                break;
+            case 'clientes':
+                title = item.Cliente;
+                subtitle = item.Cnpj || 'Sem CNPJ';
+                fotoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.Cliente)}&background=BFA16A&color=fff`;
+                break;
+            case 'produtos':
+                title = item.Produto;
+                subtitle = `ID: ${item.Id}`;
+                fotoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.Produto)}&background=373737&color=fff`;
+                break;
+        }
 
-            const isGestaoOrAdmin = ['Admin', 'Gestão'].includes(loggedInUser.Role);
-            const actionsHTML = isGestaoOrAdmin ? `
-                <button class="card-edit-btn text-blue-500" data-type="${type}" title="Editar"><i class="fas fa-edit"></i></button>
-                <button class="card-delete-btn text-red-500" data-type="${type}" title="Apagar"><i class="fas fa-trash"></i></button>
-            ` : '';
+        const isGestaoOrAdmin = ['Admin', 'Gestão'].includes(loggedInUser.Role);
+        const actionsHTML = isGestaoOrAdmin ? `
+            <button class="action-btn text-blue-500 hover:text-blue-700" data-action="edit" title="Editar"><i class="fas fa-edit"></i></button>
+            <button class="action-btn text-red-500 hover:text-red-700" data-action="delete" title="Apagar"><i class="fas fa-trash"></i></button>
+        ` : '';
 
-            return `
-                <div class="generic-card bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 flex flex-col items-center text-center" data-id="${item.Id}" data-type="${type}">
-                    <img src="${fotoUrl}" class="w-24 h-24 rounded-full object-cover mb-4">
-                    <h4 class="font-bold text-lg text-gray-800 dark:text-white">${title}</h4>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">${subtitle}</p>
-                    <div class="flex space-x-4 mt-auto pt-4">
-                        <button class="card-details-btn text-gray-500" data-type="${type}" title="Ver Detalhes"><i class="fas fa-eye"></i></button>
-                        ${actionsHTML}
-                    </div>
-                </div>`;
-        }).join('');
+        return `
+            <div class="generic-card bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 flex flex-col items-center text-center" data-id="${item.Id}" data-type="${type}">
+                <img src="${fotoUrl}" class="w-24 h-24 rounded-full object-cover mb-4">
+                <h4 class="font-bold text-lg text-gray-800 dark:text-white">${title}</h4>
+                <p class="text-sm text-gray-500 dark:text-gray-400">${subtitle}</p>
+                <div class="flex space-x-4 mt-auto pt-4">
+                    <button class="action-btn text-gray-500 hover:text-gray-700" data-action="details" title="Ver Detalhes"><i class="fas fa-eye"></i></button>
+                    ${actionsHTML}
+                </div>
+            </div>`;
     }
 
     function renderEstoque(data) {
@@ -340,42 +397,54 @@ document.addEventListener('DOMContentLoaded', function() {
         const cardsContainer = document.getElementById('estoque-cards-container');
         tbody.innerHTML = '';
         cardsContainer.innerHTML = '';
-
         const getStatusClass = (status) => status === 'Recebido' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800';
         
+        const formatQuantity = (qty) => {
+            if (qty === null || typeof qty === 'undefined') return '0,00';
+            return Number(qty).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 5 });
+        };
+
         data.forEach(item => {
             const statusClass = getStatusClass(item.Status);
-            const dataFormatada = new Date(item.Data).toLocaleString('pt-BR');
+            const dataFormatada = item.Data ? new Date(item.Data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short'}) : 'N/A';
             const isGestaoOrAdmin = ['Admin', 'Gestão'].includes(loggedInUser.Role);
-            const actionsHTML = isGestaoOrAdmin ? `
-                <button class="table-details-btn text-gray-500" data-type="estoque" title="Ver Detalhes"><i class="fas fa-eye"></i></button>
-                <button class="table-edit-btn text-blue-500" data-type="estoque" title="Editar"><i class="fas fa-edit"></i></button>
-                <button class="table-delete-btn text-red-500" data-type="estoque" title="Apagar"><i class="fas fa-trash"></i></button>
-            ` : `<button class="table-details-btn text-gray-500" data-type="estoque" title="Ver Detalhes"><i class="fas fa-eye"></i></button>`;
-
-            // Tabela
+            const actionsHTML = `
+                <button class="action-btn text-gray-500" data-action="details" title="Ver Detalhes"><i class="fas fa-eye"></i></button>
+                ${isGestaoOrAdmin ? `
+                <button class="action-btn text-blue-500" data-action="edit" title="Editar"><i class="fas fa-edit"></i></button>
+                <button class="action-btn text-red-500" data-action="delete" title="Apagar"><i class="fas fa-trash"></i></button>
+                ` : ''}
+            `;
+            
+            // Tabela com nova ordem de colunas
             tbody.innerHTML += `
-                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700" data-id="${item.Id}">
-                    <td class="px-6 py-4">${item.Emaf_Produto?.Produto || 'N/A'}</td>
+                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700" data-id="${item.Id}" data-type="estoque">
+                    <td class="px-6 py-4">${dataFormatada}</td>
                     <td class="px-6 py-4">${item.Emaf_Clientes?.Cliente || 'N/A'}</td>
                     <td class="px-6 py-4">${item.Emaf_Equipe?.Nome || 'N/A'}</td>
-                    <td class="px-6 py-4">${dataFormatada}</td>
-                    <td class="px-6 py-4">${item.Qtde}</td>
+                    <td class="px-6 py-4">${item.Emaf_Produto?.Produto || 'N/A'}</td>
+                    <td class="px-6 py-4">${item.Lote || 'N/A'}</td>
+                    <td class="px-6 py-4">${item.Container || 'N/A'}</td>
+                    <td class="px-6 py-4">${formatQuantity(item.Quantidade)}</td>
                     <td class="px-6 py-4"><span class="text-xs font-semibold px-2 py-0.5 rounded-full ${statusClass}">${item.Status}</span></td>
                     <td class="px-6 py-4 space-x-2">${actionsHTML}</td>
                 </tr>`;
 
-            // Cards
+            // Cards com nova ordem de informações
             cardsContainer.innerHTML += `
-                <div class="p-4 bg-white rounded-lg shadow dark:bg-gray-800 border dark:border-gray-700" data-id="${item.Id}">
+                <div class="p-4 bg-white rounded-lg shadow dark:bg-gray-800 border dark:border-gray-700" data-id="${item.Id}" data-type="estoque">
                     <div class="flex justify-between items-start">
-                        <p class="text-lg font-semibold text-gray-900 dark:text-white">${item.Emaf_Produto?.Produto || 'N/A'}</p>
+                        <div>
+                            <p class="text-lg font-semibold text-gray-900 dark:text-white">${item.Emaf_Produto?.Produto || 'N/A'}</p>
+                            <p class="text-xs text-gray-500">${dataFormatada}</p>
+                        </div>
                         <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${statusClass}">${item.Status}</span>
                     </div>
-                    <div class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                    <div class="mt-2 text-sm text-gray-600 dark:text-gray-400 space-y-1">
                         <p><strong>Cliente:</strong> ${item.Emaf_Clientes?.Cliente || 'N/A'}</p>
-                        <p><strong>Data:</strong> ${dataFormatada}</p>
-                        <p><strong>Quantidade:</strong> ${item.Qtde} Kg</p>
+                        <p><strong>Responsável:</strong> ${item.Emaf_Equipe?.Nome || 'N/A'}</p>
+                        <p><strong>Lote:</strong> ${item.Lote || 'N/A'} | <strong>Container:</strong> ${item.Container || 'N/A'}</p>
+                        <p><strong>Quantidade:</strong> ${formatQuantity(item.Quantidade)} Kg</p>
                     </div>
                     <div class="flex justify-end pt-2 mt-2 border-t dark:border-gray-600 space-x-2">${actionsHTML}</div>
                 </div>`;
@@ -383,205 +452,233 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // --- Manipulação de Formulários e Modais ---
-
-    function setupForm(type, id = null) {
+    
+    // **NOVA FUNÇÃO ADICIONADA**
+    // Função para controlar a visibilidade da lista e do formulário
+    function setupFormAndListVisibility(type, showForm) {
+        const listContainer = document.getElementById(`${type}-list-container`);
         const formContainer = document.getElementById(`${type}-form-container`);
-        const cardsContainer = document.getElementById(`${type}-cards-container`);
+
+        if (showForm) {
+            listContainer.classList.add('hidden');
+            formContainer.classList.remove('hidden');
+        } else {
+            listContainer.classList.remove('hidden');
+            formContainer.classList.add('hidden');
+        }
+    }
+
+   function setupForm(type, id = null) {
+        // Esconde o container da lista/tabela e mostra o container do formulário.
+        setupFormAndListVisibility(type, true);
+
         const form = document.getElementById(`${type}-form`);
         const title = document.getElementById(`${type}-form-title`);
-        
         form.reset();
-        document.getElementById(`${type}-id`).value = id || '';
-        title.textContent = id ? `Editar ${type.charAt(0).toUpperCase() + type.slice(1)}` : `Novo ${type.charAt(0).toUpperCase() + type.slice(1)}`;
-
+        form.querySelectorAll('img[id$="-preview"]').forEach(img => {
+            img.src = "https://placehold.co/100x100/e2e8f0/cbd5e0?text=Foto";
+            if (!img.classList.contains('hidden')) {
+                img.classList.add('hidden');
+            }
+        });
+        
+        document.getElementById(`${type}-Id`).value = id || '';
+        title.textContent = id ? `Editar ${capitalize(type)}` : `Novo ${capitalize(type)}`;
+        
         if (id) {
-            let item;
-            if (type === 'equipe') item = equipeData.find(d => d.Id == id);
-            else if (type === 'clientes') item = clientesData.find(d => d.Id == id);
-            else if (type === 'produtos') item = produtosData.find(d => d.Id == id);
-            else if (type === 'estoque') item = estoqueData.find(d => d.Id == id);
-            
-            if (item) {
-                Object.keys(item).forEach(key => {
-                    const input = form.querySelector(`#${type}-${key.toLowerCase()}`);
-                    if (input) {
-                        if (key.startsWith('Foto') || key === 'Etiqueta') {
-                            const preview = form.querySelector(`#${type}-${key.toLowerCase()}-preview`);
-                            if (item[key] && item[key][0]?.signedPath) {
-                                preview.src = `${NocoDB_BaseURL}/${item[key][0].signedPath}`;
-                                preview.classList.remove('hidden');
-                            } else {
-                                preview.classList.add('hidden');
-                            }
-                        } else if (key.startsWith('Emaf_')) {
-                           input.value = item[key]?.Id || '';
-                        } else {
-                           input.value = item[key];
-                        }
+            const dataArray = { equipe: equipeData, clientes: clientesData, produtos: produtosData, estoque: estoqueData }[type];
+            const item = dataArray.find(d => d.Id == id);
+            if(item) populateForm(form, item);
+        } else {
+             if(type === 'estoque') {
+                const dataInput = form.querySelector('#estoque-Data');
+                const now = new Date();
+                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                dataInput.value = now.toISOString().slice(0, 16);
+                form.querySelector('#estoque-Emaf_Equipe').value = loggedInUser.Id;
+            }
+        }
+        
+        if (type === 'estoque') {
+            toggleRecusadoFields();
+        }
+    }
+
+    function populateForm(form, data) {
+        for(const key in data) {
+            const inputId = `${form.id.replace('-form','')}-${key}`;
+            const input = document.getElementById(inputId);
+            if(input) {
+                if(input.type === 'file') {
+                    const preview = document.getElementById(`${inputId}-preview`);
+                    if(data[key] && data[key][0]?.signedPath) {
+                        preview.src = `${NOCODB_BASE_URL}/${data[key][0].signedPath}`;
+                        preview.classList.remove('hidden');
                     }
-                });
-                 if (type === 'estoque') { // Formatação especial para datetime-local
-                    const dataInput = document.getElementById('estoque-data');
-                    if (item.Data) {
-                        const d = new Date(item.Data);
-                        // Ajusta para o fuso horário local antes de formatar
+                } else if(input.tagName === 'SELECT') {
+                    input.value = data[key]?.Id ?? data[key];
+                } else if(input.type === 'datetime-local') {
+                    if (data[key]) {
+                        const d = new Date(data[key]);
                         d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-                        dataInput.value = d.toISOString().slice(0, 16);
+                        input.value = d.toISOString().slice(0, 16);
+                    }
+                } else {
+                    if (input.id === 'estoque-Quantidade' && typeof data[key] === 'number') {
+                         input.value = data[key].toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
+                    } else {
+                         input.value = data[key] ?? '';
                     }
                 }
             }
         }
-        
-        cardsContainer.classList.add('hidden');
-        formContainer.classList.remove('hidden');
     }
 
-    async function handleFormSubmit(e) {
+   async function handleFormSubmit(e) {
         e.preventDefault();
         const form = e.target;
-        const type = form.id.replace('-form', '');
-        const id = document.getElementById(`${type}-id`).value;
+        const type = form.id.replace('-form', ''); 
+        const id = document.getElementById(`${type}-Id`).value;
         const method = id ? 'PATCH' : 'POST';
-        const endpoint = id ? `Emaf_${capitalize(type)}/${id}` : `Emaf_${capitalize(type)}`;
+
+        const tableName = TABLE_NAME_MAP[type];
+        if (!tableName) {
+            alert(`Erro interno: Tipo de formulário desconhecido "${type}".`);
+            return;
+        }
+        const endpoint = id ? `${tableName}/${id}` : tableName;
         
-        showLoadingOverlay('Salvando...');
+        showLoadingOverlay(id ? 'Atualizando...' : 'Salvando...');
         
         let body = {};
-        const formData = new FormData(form);
-
-        for (let [key, value] of formData.entries()) {
-             body[key] = value;
-        }
-
-        // Mapeamento específico para cada formulário
         try {
-            if (type === 'equipe') {
-                body = {
-                    Nome: form.querySelector('#equipe-nome').value,
-                    Login: form.querySelector('#equipe-login').value,
-                    Role: form.querySelector('#equipe-role').value
-                };
-                const senha = form.querySelector('#equipe-senha').value;
-                if (senha) body.Senha = senha;
-                
-                const fileInput = form.querySelector('#equipe-foto');
-                if (fileInput.files[0]) {
-                    const fileData = await uploadFile('Emaf_Equipe', 'Foto', fileInput.files[0]);
-                    if (fileData) body.Foto = [fileData];
-                }
-            } else if (type === 'clientes') {
-                body = {
-                    Cliente: form.querySelector('#clientes-cliente').value,
-                    Cnpj: form.querySelector('#clientes-cnpj').value,
-                    Razao_Social: form.querySelector('#clientes-razao').value,
-                };
-            } else if (type === 'produtos') {
-                body = { Produto: form.querySelector('#produtos-produto').value };
-            } else if (type === 'estoque') {
-                const dataValue = form.querySelector('#estoque-data').value;
-                body = {
-                    Data: new Date(dataValue).toISOString(),
-                    Lote: form.querySelector('#estoque-lote').value,
-                    Qtde: parseFloat(form.querySelector('#estoque-qtde').value),
-                    Container: form.querySelector('#estoque-container').value,
-                    Status: form.querySelector('#estoque-status').value,
-                    Observacao: form.querySelector('#estoque-observacao').value
-                };
+            const equipeInput = form.querySelector('#estoque-Emaf_Equipe');
+            const dataInput = form.querySelector('#estoque-Data');
+            const wereDisabled = { equipe: equipeInput?.disabled, data: dataInput?.disabled };
+            if (equipeInput) equipeInput.disabled = false;
+            if (dataInput) dataInput.disabled = false;
 
-                // Tratamento de chaves estrangeiras
-                const equipeId = parseInt(form.querySelector('#estoque-equipe').value);
-                const clienteId = parseInt(form.querySelector('#estoque-cliente').value);
-                const produtoId = parseInt(form.querySelector('#estoque-produto').value);
-                
-                if (id) { // Edição
-                    body.Emaf_Equipe_id = equipeId;
-                    body.Emaf_Clientes_id = clienteId;
-                    body.Emaf_Produto_id = produtoId;
-                } else { // Criação
-                    body.Emaf_Equipe = { "Id": equipeId };
-                    body.Emaf_Clientes = { "Id": clienteId };
-                    body.Emaf_Produto = { "Id": produtoId };
-                }
+            const formElements = form.querySelectorAll('input, select, textarea');
+            for (const el of formElements) {
+                if (!el.id || el.type === 'file' || el.type === 'hidden') continue;
 
-                // Upload de arquivos
-                const fileInputs = [
-                    { id: 'estoque-etiqueta', col: 'Etiqueta' },
-                    { id: 'estoque-foto-produto', col: 'Foto_Produto' },
-                    { id: 'estoque-foto-local', col: 'Foto_Local' },
-                    { id: 'estoque-foto-veiculo', col: 'Foto_Veiculo' }
-                ];
-                for (const inputInfo of fileInputs) {
-                    const fileInput = form.querySelector(`#${inputInfo.id}`);
-                    if (fileInput.files[0]) {
-                        const fileData = await uploadFile('Emaf_Estoque', inputInfo.col, fileInput.files[0]);
-                        if (fileData) body[inputInfo.col] = [fileData];
+                const key = el.id.replace(`${type}-`, '');
+                let value = el.value.trim();
+
+                if (el.required && !value) {
+                    throw new Error(`O campo "${el.labels[0]?.textContent || key}" é obrigatório.`);
+                }
+                
+                if (el.id === 'estoque-Quantidade') {
+                    if (value) {
+                        const sanitizedValue = value.replace(/\./g, '').replace(',', '.');
+                        const numericValue = parseFloat(sanitizedValue);
+                        if (isNaN(numericValue)) {
+                            throw new Error('O valor do campo "Quantidade" é inválido.');
+                        }
+                        body[key] = numericValue;
+                    } else {
+                        body[key] = 0;
                     }
+                } else if (el.tagName === 'SELECT' && key.startsWith('Emaf_')) {
+                    const relationId = parseInt(value);
+                    if (!relationId && el.required) throw new Error(`O campo "${el.labels[0]?.textContent || key}" é obrigatório.`);
+                    
+                    if (relationId) {
+                        if(id) { body[`${key}_id`] = relationId; } 
+                        else { body[key] = { "Id": relationId }; }
+                    }
+                } else if(el.type === 'datetime-local') {
+                    body[key] = value ? new Date(value).toISOString() : null;
+                } else {
+                    body[key] = value;
                 }
+            }
+            
+            if (equipeInput) equipeInput.disabled = wereDisabled.equipe;
+            if (dataInput) dataInput.disabled = wereDisabled.data;
+
+            const fileInputs = form.querySelectorAll('input[type="file"]');
+            for (const fileInput of fileInputs) {
+                if (fileInput.files.length > 0) {
+                    const columnName = fileInput.id.replace(`${type}-`, '');
+                    const uploadTableName = TABLE_NAME_MAP[type];
+                    const fileData = await uploadFile(uploadTableName, columnName, fileInput.files[0]);
+                    if (fileData) body[columnName] = [fileData];
+                } else if (fileInput.required) {
+                     throw new Error(`O campo "${fileInput.labels[0]?.textContent || fileInput.id}" é obrigatório.`);
+                }
+            }
+            if(type === 'equipe' && id && (body.Senha === '' || typeof body.Senha === 'undefined')) {
+                delete body.Senha;
+            } else if (type === 'equipe' && !id && !body.Senha) {
+                throw new Error("O campo Senha é obrigatório para novos membros.");
             }
 
             const result = await nocoFetch(endpoint, { method, body: JSON.stringify(body) });
+            
             if (result) {
                 await fetchAllData();
-                document.getElementById(`${type}-form-container`).classList.add('hidden');
-                document.getElementById(`${type === 'estoque' ? 'estoque-table-body' : type + '-cards-container'}`).closest('.page').querySelector('div:first-child + div').classList.remove('hidden');
-                if (type === 'estoque') {
-                   document.getElementById('estoque-cards-container').classList.remove('hidden');
-                   document.querySelector('#estoque .relative.overflow-x-auto').classList.remove('hidden');
-                }
+                setupFormAndListVisibility(type, false);
             }
         } catch (error) {
             alert(`Erro ao salvar: ${error.message}`);
         } finally {
             hideLoadingOverlay();
-            // Garante que o formulário é escondido e a lista/tabela reaparece
-            document.getElementById(`${type}-form-container`).classList.add('hidden');
-            const listContainer = document.getElementById(`${type === 'estoque' ? 'estoque' : type}-cards-container`)?.parentElement;
-            listContainer?.querySelector('div:not([id*="form-container"])')?.classList.remove('hidden');
-            if (type === 'estoque') applyAndRenderEstoque();
         }
     }
-
-    function openDetailsModal(element) {
+   function openDetailsModal(element) {
         const id = element.dataset.id;
         const type = element.dataset.type;
-        let data, dataArray;
-
-        switch(type) {
-            case 'equipe': dataArray = equipeData; break;
-            case 'clientes': dataArray = clientesData; break;
-            case 'produtos': dataArray = produtosData; break;
-            case 'estoque': dataArray = estoqueData; break;
-            default: return;
-        }
-
-        data = dataArray.find(d => d.Id == id);
+        const dataArray = { equipe: equipeData, clientes: clientesData, produtos: produtosData, estoque: estoqueData }[type];
+        const data = dataArray.find(d => d.Id == id);
         if (!data) return;
 
         activeDeleteItem = { id, type, element };
+        document.getElementById('details-modal-actions').classList.add('hidden'); // Botões já estão ocultos via HTML, mas isso garante.
+        
         document.getElementById('modal-title').textContent = `Detalhes de ${type}`;
         
         let contentHTML = '';
-        for (const key in data) {
-            if (key === 'Id' || key.startsWith('nc_') || key.endsWith('_id')) continue;
-            
-            const label = GLOBAL_LABEL_MAP[key.toLowerCase()] || key;
-            let value = data[key];
+        
+        const formatValue = (key, value) => {
+            const keyLower = key.toLowerCase();
+            if (key === 'Id' || key.startsWith('nc_') || key.endsWith('_id') || keyLower === 'senha' || keyLower === 'createdat' || keyLower === 'updatedat') return '';
+
+            const label = GLOBAL_LABEL_MAP[keyLower] || key;
+            let displayValue = value;
 
             if (typeof value === 'object' && value !== null) {
                 if(Array.isArray(value) && value.length > 0 && value[0]?.signedPath) {
-                    contentHTML += `<p><strong>${label}:</strong></p>`;
-                    value.forEach(file => {
-                        contentHTML += `<a href="${NocoDB_BaseURL}/${file.signedPath}" target="_blank"><img src="${NocoDB_BaseURL}/${file.signedPath}" class="w-24 h-24 object-cover inline-block m-1 border rounded"></a>`;
-                    });
-                    continue; // Pula o parágrafo padrão
+                    // --- CORREÇÃO AQUI ---
+                    // Adiciona o onclick="showImageModal(this.src)" e a classe cursor-pointer
+                    const images = value.map(file => 
+                        `<img src="${NOCODB_BASE_URL}/${file.signedPath}" class="w-24 h-24 object-cover inline-block m-1 border rounded cursor-pointer" onclick="showImageModal(this.src)" alt="${label}">`
+                    ).join('');
+                    return `<div class="mt-2"><p class="font-bold">${label}:</p>${images}</div>`;
                 } else {
-                    value = value.Nome || value.Cliente || value.Produto || JSON.stringify(value);
+                    displayValue = value.Nome || value.Cliente || value.Produto || 'N/A';
                 }
             }
-            if (key.toLowerCase().includes('data')) {
-                value = new Date(value).toLocaleString('pt-BR');
+            if (key.toLowerCase().includes('data') && displayValue && displayValue !== 'N/A') {
+                displayValue = new Date(displayValue).toLocaleString('pt-BR');
             }
-            contentHTML += `<p><strong>${label}:</strong> ${value || 'N/A'}</p>`;
+             if (keyLower === 'quantidade' && (typeof displayValue === 'number')) {
+                 displayValue = displayValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
+            }
+
+            return `<p><strong>${label}:</strong> ${displayValue || 'N/A'}</p>`;
+        };
+
+        if (type === 'estoque') {
+            const order = ['Data', 'Emaf_Clientes', 'Emaf_Equipe', 'Emaf_Produto', 'Lote', 'Container', 'Quantidade', 'Status', 'Observacao', 'Etiqueta', 'Foto_Produto', 'Foto_Local', 'Foto_Veiculo'];
+            order.forEach(key => {
+                if (data.hasOwnProperty(key)) {
+                    contentHTML += formatValue(key, data[key]);
+                }
+            });
+        } else {
+            contentHTML = Object.entries(data).map(([key, value]) => formatValue(key, value)).join('');
         }
         
         document.getElementById('modal-content').innerHTML = contentHTML;
@@ -590,32 +687,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function handleDelete() {
         if (!activeDeleteItem) return;
-
-        const { id, type, element } = activeDeleteItem;
-        const endpoint = `Emaf_${capitalize(type)}/${id}`;
+        const { id, type } = activeDeleteItem;
+        const tableName = TABLE_NAME_MAP[type];
+        if(!tableName) return;
+        const endpoint = `${tableName}/${id}`;
 
         showLoadingOverlay('Apagando...');
         const result = await nocoFetch(endpoint, { method: 'DELETE' });
-        hideLoadingOverlay();
         
         if (result && result.success) {
-            element?.remove();
-            await fetchAllData(); // Recarrega tudo para garantir consistência
+            await fetchAllData();
         } else {
             alert('Falha ao apagar o registro.');
         }
-
+        
+        hideLoadingOverlay();
         hideModal(document.getElementById('delete-confirm-modal'));
         hideModal(document.getElementById('details-modal'));
         activeDeleteItem = null;
     }
 
     function capitalize(s) {
+        if (s === 'clientes') return 'Clientes';
+        if (s === 'produtos') return 'Produto';
         return s.charAt(0).toUpperCase() + s.slice(1);
     }
-
+    
     // --- Listeners de Eventos ---
-
     function setupEventListeners() {
         document.getElementById('login-form')?.addEventListener('submit', handleLogin);
         document.getElementById('logout-button')?.addEventListener('click', () => showModal(document.getElementById('logout-confirm-modal')));
@@ -633,33 +731,13 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        // Forms
-        document.querySelectorAll('form[id$="-form"]').forEach(form => {
-             if (form.id !== 'login-form') form.addEventListener('submit', handleFormSubmit);
+        ['equipe', 'clientes', 'produtos', 'estoque'].forEach(type => {
+            document.getElementById(`show-${type}-form`)?.addEventListener('click', () => setupForm(type));
+            document.getElementById(`cancel-${type}-form`)?.addEventListener('click', () => setupFormAndListVisibility(type, false));
+            const form = document.getElementById(`${type}-form`);
+            if (form) form.addEventListener('submit', handleFormSubmit);
         });
 
-        // Botões de "Novo"
-        document.getElementById('show-equipe-form')?.addEventListener('click', () => setupForm('equipe'));
-        document.getElementById('show-clientes-form')?.addEventListener('click', () => setupForm('clientes'));
-        document.getElementById('show-produtos-form')?.addEventListener('click', () => setupForm('produtos'));
-        document.getElementById('show-estoque-form')?.addEventListener('click', () => setupForm('estoque'));
-
-        // Botões de "Cancelar" dos formulários
-        document.querySelectorAll('button[id^="cancel-"]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const type = btn.id.split('-')[1];
-                const formContainer = document.getElementById(`${type}-form-container`);
-                const listContainer = document.getElementById(`${type === 'estoque' ? 'estoque' : type}-cards-container`)?.parentElement;
-                
-                formContainer.classList.add('hidden');
-                listContainer.querySelector('div:not([id*="form-container"])')?.classList.remove('hidden');
-                if (type === 'estoque') {
-                   document.querySelector('#estoque .relative.overflow-x-auto').classList.remove('hidden');
-                }
-            });
-        });
-
-        // Modals
         document.getElementById('close-modal')?.addEventListener('click', () => hideModal(document.getElementById('details-modal')));
         document.getElementById('edit-btn')?.addEventListener('click', () => {
              if (activeDeleteItem) {
@@ -673,49 +751,37 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         document.getElementById('cancel-delete-btn')?.addEventListener('click', () => {
             hideModal(document.getElementById('delete-confirm-modal'));
-            showModal(document.getElementById('details-modal'));
+            if(activeDeleteItem) showModal(document.getElementById('details-modal'));
         });
         document.getElementById('confirm-delete-btn')?.addEventListener('click', handleDelete);
         
-        // Listeners em containers para delegação de eventos
         document.body.addEventListener('click', function(e) {
-            const cardDetailsBtn = e.target.closest('.card-details-btn');
-            const cardEditBtn = e.target.closest('.card-edit-btn');
-            const cardDeleteBtn = e.target.closest('.card-delete-btn');
-            const tableDetailsBtn = e.target.closest('.table-details-btn');
-            const tableEditBtn = e.target.closest('.table-edit-btn');
-            const tableDeleteBtn = e.target.closest('.table-delete-btn');
+            const actionBtn = e.target.closest('.action-btn');
+            if (!actionBtn) return;
+            
+            const dataContainer = actionBtn.closest('[data-id]');
+            if (!dataContainer) return;
 
-            if (cardDetailsBtn) {
-                const card = cardDetailsBtn.closest('.generic-card');
-                openDetailsModal(card);
-            } else if (cardEditBtn) {
-                const card = cardEditBtn.closest('.generic-card');
-                setupForm(card.dataset.type, card.dataset.id);
-            } else if (cardDeleteBtn) {
-                const card = cardDeleteBtn.closest('.generic-card');
-                activeDeleteItem = { id: card.dataset.id, type: card.dataset.type, element: card };
-                showModal(document.getElementById('delete-confirm-modal'));
-            } else if (tableDetailsBtn) {
-                const row = tableDetailsBtn.closest('tr');
-                openDetailsModal(row);
-            } else if (tableEditBtn) {
-                const row = tableEditBtn.closest('tr');
-                setupForm(row.dataset.type, row.dataset.id);
-            } else if (tableDeleteBtn) {
-                const row = tableDeleteBtn.closest('tr');
-                activeDeleteItem = { id: row.dataset.id, type: tableDeleteBtn.dataset.type, element: row };
+            const id = dataContainer.dataset.id;
+            const type = dataContainer.dataset.type;
+            const action = actionBtn.dataset.action;
+
+            if (action === 'details') openDetailsModal(dataContainer);
+            else if (action === 'edit') setupForm(type, id);
+            else if (action === 'delete') {
+                activeDeleteItem = { id, type, element: dataContainer };
                 showModal(document.getElementById('delete-confirm-modal'));
             }
         });
-
-        // Filtros e buscas
+        window.showImageModal = showImageModal; 
+        document.getElementById('estoque-Status')?.addEventListener('change', toggleRecusadoFields);
         document.getElementById('equipe-search')?.addEventListener('input', applyAndRenderEquipe);
         document.getElementById('clientes-search')?.addEventListener('input', applyAndRenderClientes);
         document.getElementById('produtos-search')?.addEventListener('input', applyAndRenderProdutos);
-        document.querySelectorAll('#estoque .grid select, #estoque .grid input[type="date"]').forEach(el => {
-            el.addEventListener('change', applyAndRenderEstoque);
-        });
+        document.querySelectorAll('#estoque-list-container .grid input, #estoque-list-container .grid select').forEach(el => {
+            const eventType = (el.tagName === 'INPUT' && el.type === 'text') ? 'input' : 'change';
+            el.addEventListener(eventType, applyAndRenderEstoque);
+        });     
     }
 
     // --- Inicialização ---
