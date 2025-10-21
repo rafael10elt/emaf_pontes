@@ -43,12 +43,13 @@
                  <div class="logo-symbol-sidebar">
                     <img src="images/ponteslogosfundo.png" alt="Logo Pontes Consultoria" style="width: 58px; height: 50px; object-fit: contain;" />
                 </div>
-                <nav class="flex-1">
-                    <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg bg-brand-gold text-white" data-target="estoque" title="Estoque"><i class="fas fa-warehouse"></i></a>
-                    <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg text-gray-400 hover:bg-brand-gold hover:text-white" data-target="equipe" title="Equipe"><i class="fas fa-users"></i></a>
-                    <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg text-gray-400 hover:bg-brand-gold hover:text-white" data-target="clientes" title="Clientes"><i class="fas fa-handshake"></i></a>
-                    <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg text-gray-400 hover:bg-brand-gold hover:text-white" data-target="produtos" title="Produtos"><i class="fas fa-box-open"></i></a>
-                </nav>
+                <nav class="flex-1 mt-6">
+    <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg" data-target="dashboard" title="Dashboard"><i class="fas fa-chart-pie"></i></a>
+    <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg" data-target="estoque" title="Estoque"><i class="fas fa-warehouse"></i></a>
+    <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg" data-target="equipe" title="Equipe"><i class="fas fa-users"></i></a>
+    <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg" data-target="clientes" title="Clientes"><i class="fas fa-handshake"></i></a>
+    <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg" data-target="produtos" title="Produtos"><i class="fas fa-box-open"></i></a>
+</nav>
             </aside>
             <div id="sidebar-overlay" class="fixed inset-0 z-20 bg-black bg-opacity-50 hidden lg:hidden"></div>
 
@@ -237,6 +238,82 @@
                             </form>
                         </div>
                     </div>
+                    <!-- ======================= TELA DE DASHBOARD ======================= -->
+                <!-- ======================= TELA DE DASHBOARD ======================= -->
+<div id="dashboard" class="page hidden">
+    <div class="mb-4">
+        <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Dashboard</h2>
+        <p class="text-gray-600 dark:text-gray-300">Análise do Controle de Estoque</p>
+    </div>
+
+    <!-- Filtros Globais -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div><label for="dash-start-date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">De</label><input type="date" id="dash-start-date" class="dash-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
+        <div><label for="dash-end-date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Até</label><input type="date" id="dash-end-date" class="dash-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
+        <div><label for="dash-cliente" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cliente</label><select id="dash-cliente" class="dash-filter cliente-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select></div>
+        <div><label for="dash-produto" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Produto</label><select id="dash-produto" class="dash-filter produto-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select></div>
+        <div class="col-span-1 md:col-span-2 lg:col-span-4 flex justify-end">
+            <button id="clear-dash-filters" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Limpar Filtros</button>
+        </div>
+    </div>
+
+    <!-- KPIs (Scorecards) - AGORA DENTRO DE UM CARD -->
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div class="text-center">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Recebido (Kg)</p>
+                <h3 id="kpi-total-recebido" class="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mt-1">0,00</h3>
+            </div>
+            <div class="text-center">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Recusado (Kg)</p>
+                <h3 id="kpi-total-recusado" class="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mt-1">0,00</h3>
+            </div>
+            <div class="text-center">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Taxa de Recusa</p>
+                <h3 id="kpi-taxa-recusa" class="text-2xl lg:text-3xl font-bold text-red-500 mt-1">0,0%</h3>
+            </div>
+            <div class="text-center">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total de Transações</p>
+                <h3 id="kpi-total-transacoes" class="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mt-1">0</h3>
+            </div>
+            <div class="text-center">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Ticket Médio (Kg)</p>
+                <h3 id="kpi-ticket-medio" class="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mt-1">0,00</h3>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Gráficos -->
+    <div class="space-y-6">
+        <!-- Gráfico 1 -->
+        <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+            <h4 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Movimentação ao Longo do Tempo</h4>
+            <div class="h-80"><canvas id="movimentacao-chart"></canvas></div>
+        </div>
+        <!-- Gráficos 2 e 3 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+                <h4 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Top 5 Produtos por Quantidade Recebida</h4>
+                <div class="h-80"><canvas id="top-produtos-chart"></canvas></div>
+            </div>
+            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+                <h4 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Top 5 Clientes por Quantidade Recebida</h4>
+                <div class="h-80"><canvas id="top-clientes-chart"></canvas></div>
+            </div>
+        </div>
+        <!-- Gráficos 4 e 5 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+                <h4 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Proporção de Status (por Kg)</h4>
+                <div class="h-80 relative mx-auto" style="max-width: 320px;"><canvas id="status-chart"></canvas></div>
+            </div>
+            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+                <h4 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Detalhamento de Recusas por Produto</h4>
+                <div class="h-80"><canvas id="recusas-produto-chart"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
                 </main>
             </div>
         </div>

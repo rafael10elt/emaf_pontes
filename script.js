@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Variáveis de Estado da UI ---
     let activeDeleteItem = { id: null, type: null, element: null };
-
+let movimentacaoChart, topProdutosChart, topClientesChart, statusChart, recusasProdutoChart;
     // --- Mapeamento de Nomes de Tabela ---
     const TABLE_NAME_MAP = {
         equipe: 'Emaf_Equipe',
@@ -161,7 +161,156 @@ document.addEventListener('DOMContentLoaded', function() {
     function hideModal(modalElement) {
         modalElement?.classList.replace('flex', 'hidden');
     }
+ function updateDashboard() {
+        if (!estoqueData || estoqueData.length === 0) return;
 
+        const startDate = document.getElementById('dash-start-date').value;
+        const endDate = document.getElementById('dash-end-date').value;
+        const clienteId = document.getElementById('dash-cliente').value;
+        const produtoId = document.getElementById('dash-produto').value;
+
+        const filteredData = estoqueData.filter(item => 
+            (!startDate || item.Data.slice(0, 10) >= startDate) &&
+            (!endDate || item.Data.slice(0, 10) <= endDate) &&
+            (!clienteId || item.Emaf_Clientes?.Id == clienteId) &&
+            (!produtoId || item.Emaf_Produto?.Id == produtoId)
+        );
+
+        updateKPIs(filteredData);
+        updateMovimentacaoChart(filteredData);
+        updateTopProdutosChart(filteredData);
+        updateTopClientesChart(filteredData);
+        updateStatusChart(filteredData);
+        updateRecusasProdutoChart(filteredData);
+    }
+
+    function updateKPIs(data) {
+        const formatKg = (num) => Number(num || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        
+        const recebido = data.filter(d => d.Status === 'Recebido').reduce((sum, item) => sum + (item.Quantidade || 0), 0);
+        const recusado = data.filter(d => d.Status === 'Recusado').reduce((sum, item) => sum + (item.Quantidade || 0), 0);
+        const total = recebido + recusado;
+        const taxaRecusa = total > 0 ? (recusado / total) * 100 : 0;
+        const totalTransacoes = data.length;
+        const ticketMedio = totalTransacoes > 0 ? data.reduce((sum, item) => sum + (item.Quantidade || 0), 0) / totalTransacoes : 0;
+
+        document.getElementById('kpi-total-recebido').textContent = formatKg(recebido);
+        document.getElementById('kpi-total-recusado').textContent = formatKg(recusado);
+        document.getElementById('kpi-taxa-recusa').textContent = `${taxaRecusa.toFixed(1)}%`;
+        document.getElementById('kpi-total-transacoes').textContent = totalTransacoes;
+        document.getElementById('kpi-ticket-medio').textContent = formatKg(ticketMedio);
+    }
+
+function createChart(ctx, type, data, options, chartVarName) {
+        // CORREÇÃO: Usamos o nome da variável como uma propriedade do objeto global 'window'
+        // para que possamos verificar se ela já existe e destruí-la se necessário.
+        if (window[chartVarName]) {
+            window[chartVarName].destroy();
+        }
+        window[chartVarName] = new Chart(ctx, { type, data, options });
+    }
+
+    function getChartDefaultOptions() {
+        const isDark = document.body.classList.contains('dark');
+        const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+        const labelColor = isDark ? '#e5e7eb' : '#373737';
+        return {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: labelColor } } },
+            scales: {
+                x: { ticks: { color: labelColor }, grid: { color: gridColor } },
+                y: { ticks: { color: labelColor }, grid: { color: gridColor } }
+            }
+        };
+    }
+
+    function updateMovimentacaoChart(data) {
+        const ctx = document.getElementById('movimentacao-chart').getContext('2d');
+        const movimentacao = data.reduce((acc, item) => {
+            const date = item.Data.slice(0, 10);
+            if (!acc[date]) acc[date] = { recebido: 0, recusado: 0 };
+            if (item.Status === 'Recebido') acc[date].recebido += (item.Quantidade || 0);
+            if (item.Status === 'Recusado') acc[date].recusado += (item.Quantidade || 0);
+            return acc;
+        }, {});
+
+        const sortedDates = Object.keys(movimentacao).sort();
+        const chartData = {
+            labels: sortedDates.map(d => new Date(d + 'T00:00:00').toLocaleDateString('pt-BR')),
+            datasets: [
+                { label: 'Recebido (Kg)', data: sortedDates.map(d => movimentacao[d].recebido), backgroundColor: 'rgba(16, 185, 129, 0.5)', borderColor: '#10B981', fill: true, tension: 0.3 },
+                { label: 'Recusado (Kg)', data: sortedDates.map(d => movimentacao[d].recusado), backgroundColor: 'rgba(239, 68, 68, 0.5)', borderColor: '#EF4444', fill: true, tension: 0.3 }
+            ]
+        };
+        createChart(ctx, 'line', chartData, getChartDefaultOptions(), 'movimentacaoChart');
+    }
+
+    function updateTopProdutosChart(data) {
+        const ctx = document.getElementById('top-produtos-chart').getContext('2d');
+        const byProduto = data.filter(d => d.Status === 'Recebido').reduce((acc, item) => {
+            const nome = item.Emaf_Produto?.Produto || 'Desconhecido';
+            acc[nome] = (acc[nome] || 0) + (item.Quantidade || 0);
+            return acc;
+        }, {});
+        const top5 = Object.entries(byProduto).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        const chartData = {
+            labels: top5.map(p => p[0]),
+            datasets: [{ label: 'Quantidade (Kg)', data: top5.map(p => p[1]), backgroundColor: '#BFA16A' }]
+        };
+        const options = { ...getChartDefaultOptions(), indexAxis: 'y', plugins: { legend: { display: false } } };
+        createChart(ctx, 'bar', chartData, options, 'topProdutosChart');
+    }
+
+    function updateTopClientesChart(data) {
+        const ctx = document.getElementById('top-clientes-chart').getContext('2d');
+        const byCliente = data.filter(d => d.Status === 'Recebido').reduce((acc, item) => {
+            const nome = item.Emaf_Clientes?.Cliente || 'Desconhecido';
+            acc[nome] = (acc[nome] || 0) + (item.Quantidade || 0);
+            return acc;
+        }, {});
+        const top5 = Object.entries(byCliente).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        const chartData = {
+            labels: top5.map(c => c[0]),
+            datasets: [{ label: 'Quantidade (Kg)', data: top5.map(c => c[1]), backgroundColor: '#373737' }]
+        };
+        const options = { ...getChartDefaultOptions(), indexAxis: 'y', plugins: { legend: { display: false } } };
+        createChart(ctx, 'bar', chartData, options, 'topClientesChart');
+    }
+
+    function updateStatusChart(data) {
+        const ctx = document.getElementById('status-chart').getContext('2d');
+        const statusData = data.reduce((acc, item) => {
+            const status = item.Status || 'N/A';
+            acc[status] = (acc[status] || 0) + (item.Quantidade || 0);
+            return acc;
+        }, {});
+        const chartData = {
+            labels: Object.keys(statusData),
+            datasets: [{
+                data: Object.values(statusData),
+                backgroundColor: ['#10B981', '#EF4444', '#F59E0B', '#3B82F6'],
+            }]
+        };
+        const options = { ...getChartDefaultOptions(), scales: { x: { display: false }, y: { display: false } } };
+        createChart(ctx, 'doughnut', chartData, options, 'statusChart');
+    }
+    
+    function updateRecusasProdutoChart(data) {
+        const ctx = document.getElementById('recusas-produto-chart').getContext('2d');
+        const byProduto = data.filter(d => d.Status === 'Recusado').reduce((acc, item) => {
+            const nome = item.Emaf_Produto?.Produto || 'Desconhecido';
+            acc[nome] = (acc[nome] || 0) + (item.Quantidade || 0);
+            return acc;
+        }, {});
+        const sorted = Object.entries(byProduto).sort((a, b) => b[1] - a[1]);
+        const chartData = {
+            labels: sorted.map(p => p[0]),
+            datasets: [{ label: 'Recusado (Kg)', data: sorted.map(p => p[1]), backgroundColor: '#EF4444' }]
+        };
+        const options = { ...getChartDefaultOptions(), indexAxis: 'y', plugins: { legend: { display: false } } };
+        createChart(ctx, 'bar', chartData, options, 'recusasProdutoChart');
+    }
     // --- Funções de Carregamento de Dados ---
     async function fetchAllData() {
         showLoadingOverlay('Carregando dados do sistema...');
@@ -220,7 +369,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    async function initializeUserSession(user) {
+   async function initializeUserSession(user) {
         loggedInUser = user;
         document.getElementById('logged-user-name').textContent = loggedInUser.Nome;
         document.getElementById('logged-user-role').textContent = loggedInUser.Role;
@@ -235,6 +384,16 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('main-app').classList.remove('hidden');
 
+        // Mostra todas as abas por padrão, a lógica de permissão irá esconder o que for necessário
+        document.querySelectorAll('.nav-link').forEach(link => link.style.display = 'flex');
+
+        const isProd = loggedInUser.Role === 'Produção';
+        if (isProd) {
+            document.querySelector('.nav-link[data-target="equipe"]').style.display = 'none';
+            document.querySelector('.nav-link[data-target="clientes"]').style.display = 'none';
+            document.querySelector('.nav-link[data-target="produtos"]').style.display = 'none';
+        }
+        
         const isGestaoOrAdmin = ['Admin', 'Gestão'].includes(loggedInUser.Role);
         document.querySelectorAll('#show-equipe-form, #show-clientes-form, #show-produtos-form').forEach(btn => {
             btn.style.display = isGestaoOrAdmin ? 'block' : 'none';
@@ -242,7 +401,8 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('show-estoque-form').style.display = 'block';
 
         await fetchAllData();
-        navigateTo(sessionStorage.getItem('currentPage') || 'estoque');
+        // Define o Dashboard como a página inicial padrão após o login
+        navigateTo(sessionStorage.getItem('currentPage') || 'dashboard');
     }
 
     async function checkSession() {
@@ -255,7 +415,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- Funções de Navegação e UI ---
     function navigateTo(targetId) {
         document.querySelectorAll('.page').forEach(page => page.classList.add('hidden'));
-        document.getElementById(targetId)?.classList.remove('hidden');
+        const targetPage = document.getElementById(targetId);
+        if (targetPage) {
+            targetPage.classList.remove('hidden');
+            // Se a página for o dashboard, atualiza os gráficos
+            if (targetId === 'dashboard') {
+                setTimeout(updateDashboard, 10); // Pequeno delay para garantir a renderização
+            }
+        }
         
         document.querySelectorAll('.nav-link').forEach(l => {
             l.classList.remove('bg-brand-gold', 'text-white');
@@ -772,6 +939,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 activeDeleteItem = { id, type, element: dataContainer };
                 showModal(document.getElementById('delete-confirm-modal'));
             }
+        });
+        document.querySelectorAll('.dash-filter').forEach(filter => {
+            filter.addEventListener('change', updateDashboard);
+        });
+        document.getElementById('clear-dash-filters')?.addEventListener('click', () => {
+            document.getElementById('dash-start-date').value = '';
+            document.getElementById('dash-end-date').value = '';
+            document.getElementById('dash-cliente').value = '';
+            document.getElementById('dash-produto').value = '';
+            updateDashboard();
         });
         window.showImageModal = showImageModal; 
         document.getElementById('estoque-Status')?.addEventListener('change', toggleRecusadoFields);
