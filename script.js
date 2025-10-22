@@ -13,8 +13,16 @@ document.addEventListener('DOMContentLoaded', function() {
     let loggedInUser = null;
 
     // --- Variáveis de Estado da UI ---
-    let activeDeleteItem = { id: null, type: null, element: null };
-let movimentacaoChart, topProdutosChart, topClientesChart, statusChart, recusasProdutoChart;
+    // --- Variáveis de Estado da UI ---
+let activeDeleteItem = { id: null, type: null, element: null };
+// Objeto para gerenciar as instâncias dos gráficos
+const charts = {
+    movimentacaoChart: null,
+    topProdutosChart: null,
+    topClientesChart: null,
+    statusChart: null,
+    recusasProdutoChart: null
+};
     // --- Mapeamento de Nomes de Tabela ---
     const TABLE_NAME_MAP = {
         equipe: 'Emaf_Equipe',
@@ -202,12 +210,12 @@ let movimentacaoChart, topProdutosChart, topClientesChart, statusChart, recusasP
     }
 
 function createChart(ctx, type, data, options, chartVarName) {
-        // CORREÇÃO: Usamos o nome da variável como uma propriedade do objeto global 'window'
-        // para que possamos verificar se ela já existe e destruí-la se necessário.
-        if (window[chartVarName]) {
-            window[chartVarName].destroy();
+        // Agora verificamos e destruímos usando o objeto 'charts'
+        if (charts[chartVarName]) {
+            charts[chartVarName].destroy();
         }
-        window[chartVarName] = new Chart(ctx, { type, data, options });
+        // E atribuímos a nova instância ao objeto 'charts'
+        charts[chartVarName] = new Chart(ctx, { type, data, options });
     }
 
     function getChartDefaultOptions() {
@@ -225,8 +233,17 @@ function createChart(ctx, type, data, options, chartVarName) {
         };
     }
 
-    function updateMovimentacaoChart(data) {
-        const ctx = document.getElementById('movimentacao-chart').getContext('2d');
+function updateMovimentacaoChart(data) {
+        const ctx = document.getElementById('movimentacao-chart');
+        
+        // Verificação de segurança: se o canvas não for encontrado, não faz nada.
+        if (!ctx) {
+            console.error("Elemento canvas 'movimentacao-chart' não encontrado.");
+            return; 
+        }
+        
+        const context = ctx.getContext('2d');
+
         const movimentacao = data.reduce((acc, item) => {
             const date = item.Data.slice(0, 10);
             if (!acc[date]) acc[date] = { recebido: 0, recusado: 0 };
@@ -239,11 +256,25 @@ function createChart(ctx, type, data, options, chartVarName) {
         const chartData = {
             labels: sortedDates.map(d => new Date(d + 'T00:00:00').toLocaleDateString('pt-BR')),
             datasets: [
-                { label: 'Recebido (Kg)', data: sortedDates.map(d => movimentacao[d].recebido), backgroundColor: 'rgba(16, 185, 129, 0.5)', borderColor: '#10B981', fill: true, tension: 0.3 },
-                { label: 'Recusado (Kg)', data: sortedDates.map(d => movimentacao[d].recusado), backgroundColor: 'rgba(239, 68, 68, 0.5)', borderColor: '#EF4444', fill: true, tension: 0.3 }
+                { 
+                    label: 'Recebido (Kg)', 
+                    data: sortedDates.map(d => movimentacao[d].recebido), 
+                    backgroundColor: 'rgba(16, 185, 129, 0.5)', 
+                    borderColor: '#10B981', 
+                    fill: true, 
+                    tension: 0.3 
+                },
+                { 
+                    label: 'Recusado (Kg)', 
+                    data: sortedDates.map(d => movimentacao[d].recusado), 
+                    backgroundColor: 'rgba(239, 68, 68, 0.5)', 
+                    borderColor: '#EF4444', 
+                    fill: true, 
+                    tension: 0.3 
+                }
             ]
         };
-        createChart(ctx, 'line', chartData, getChartDefaultOptions(), 'movimentacaoChart');
+        createChart(context, 'line', chartData, getChartDefaultOptions(), 'movimentacaoChart');
     }
 
     function updateTopProdutosChart(data) {
