@@ -67,7 +67,18 @@ const charts = {
     function hideModal(modalElement) {
         modalElement?.classList.replace('flex', 'hidden');
     }
+function formatCNPJ(cnpj) {
+        if (!cnpj || typeof cnpj !== 'string') return 'Sem CNPJ';
+        
+        // Remove todos os caracteres que não são dígitos
+        const cleaned = cnpj.replace(/\D/g, '');
 
+        // Retorna o CNPJ original se não tiver 14 dígitos
+        if (cleaned.length !== 14) return cnpj;
+
+        // Aplica a máscara XX.XXX.XXX/XXXX-XX
+        return cleaned.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    }
     // --- ADICIONE A FUNÇÃO ABAIXO ---
     function showImageModal(src) {
         // Remove qualquer modal de imagem que já esteja aberto
@@ -562,7 +573,7 @@ function updateMovimentacaoChart(data) {
                 break;
             case 'clientes':
                 title = item.Cliente;
-                subtitle = item.Cnpj || 'Sem CNPJ';
+                subtitle = formatCNPJ(item.Cnpj);
                 fotoUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.Cliente)}&background=BFA16A&color=fff`;
                 break;
             case 'produtos':
@@ -584,7 +595,7 @@ function updateMovimentacaoChart(data) {
                 <h4 class="font-bold text-lg text-gray-800 dark:text-white">${title}</h4>
                 <p class="text-sm text-gray-500 dark:text-gray-400">${subtitle}</p>
                 <div class="flex space-x-4 mt-auto pt-4">
-                    <button class="action-btn text-gray-500 hover:text-gray-700" data-action="details" title="Ver Detalhes"><i class="fas fa-eye"></i></button>
+                    ${type !== 'equipe' ? '<button class="action-btn text-gray-500 hover:text-gray-700" data-action="details" title="Ver Detalhes"><i class="fas fa-eye"></i></button>' : ''}
                     ${actionsHTML}
                 </div>
             </div>`;
@@ -835,21 +846,20 @@ function updateMovimentacaoChart(data) {
         activeDeleteItem = { id, type, element };
         document.getElementById('details-modal-actions').classList.add('hidden'); // Botões já estão ocultos via HTML, mas isso garante.
         
-        document.getElementById('modal-title').textContent = `Detalhes de ${type}`;
+        document.getElementById('modal-title').textContent = `Detalhes de ${capitalize(type)}`;
         
         let contentHTML = '';
         
         const formatValue = (key, value) => {
             const keyLower = key.toLowerCase();
-            if (key === 'Id' || key.startsWith('nc_') || key.endsWith('_id') || keyLower === 'senha' || keyLower === 'createdat' || keyLower === 'updatedat') return '';
+            // AJUSTE 1: Adicionado 'cliente_estoque' para ser ignorado na exibição.
+            if (key === 'Id' || key.startsWith('nc_') || key.endsWith('_id') || keyLower === 'senha' || keyLower === 'createdat' || keyLower === 'updatedat' || keyLower === 'cliente_estoque') return '';
 
             const label = GLOBAL_LABEL_MAP[keyLower] || key;
             let displayValue = value;
 
             if (typeof value === 'object' && value !== null) {
                 if(Array.isArray(value) && value.length > 0 && value[0]?.signedPath) {
-                    // --- CORREÇÃO AQUI ---
-                    // Adiciona o onclick="showImageModal(this.src)" e a classe cursor-pointer
                     const images = value.map(file => 
                         `<img src="${NOCODB_BASE_URL}/${file.signedPath}" class="w-24 h-24 object-cover inline-block m-1 border rounded cursor-pointer" onclick="showImageModal(this.src)" alt="${label}">`
                     ).join('');
@@ -858,6 +868,12 @@ function updateMovimentacaoChart(data) {
                     displayValue = value.Nome || value.Cliente || value.Produto || 'N/A';
                 }
             }
+
+            // AJUSTE 2: Adicionada a formatação para o campo CNPJ.
+            if (keyLower === 'cnpj' && displayValue) {
+                 displayValue = formatCNPJ(displayValue);
+            }
+
             if (key.toLowerCase().includes('data') && displayValue && displayValue !== 'N/A') {
                 displayValue = new Date(displayValue).toLocaleString('pt-BR');
             }
