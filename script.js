@@ -1751,8 +1751,12 @@ async function handleProducaoSelectChange(event) {
             return;
         }
 
-        // Busca todos os lotes ATIVOS e RECEBIDOS para o cliente selecionado
-        const lotesAtivosEndpoint = `Emaf_Estoque?where=(Emaf_Clientes_id,eq,${clienteId})~and(Status_Lote,eq,Ativo)~and(Status,eq,Recebido)&nested[Emaf_Produto][fields]=Id,Produto`;
+        // LÓGICA DE CONSULTA CORRIGIDA
+        // Monta a query para buscar lotes ativos e recebidos para o cliente
+        const whereClause = `(Emaf_Clientes_id,eq,${clienteId})~and(Status_Lote,eq,Ativo)~and(Status,eq,Recebido)`;
+        const nestedClause = `nested[Emaf_Produto][fields]=Id,Produto`;
+        const lotesAtivosEndpoint = `Emaf_Estoque?where=${whereClause}&${nestedClause}`;
+        
         const result = await nocoFetch(lotesAtivosEndpoint);
 
         if (result && result.list && result.list.length > 0) {
@@ -1764,31 +1768,35 @@ async function handleProducaoSelectChange(event) {
                 return acc;
             }, []);
             
-            // Popula o select de produtos com as opções filtradas
-            let options = '<option value="">Selecione um produto...</option>';
-            produtosDisponiveis.sort((a,b) => a.Produto.localeCompare(b.Produto)).forEach(produto => {
-                options += `<option value="${produto.Id}">${produto.Produto}</option>`;
-            });
-            produtoSelect.innerHTML = options;
-            produtoSelect.disabled = false;
+            if (produtosDisponiveis.length > 0) {
+                let options = '<option value="">Selecione um produto...</option>';
+                produtosDisponiveis.sort((a,b) => a.Produto.localeCompare(b.Produto)).forEach(produto => {
+                    options += `<option value="${produto.Id}">${produto.Produto}</option>`;
+                });
+                produtoSelect.innerHTML = options;
+                produtoSelect.disabled = false;
+            } else {
+                 produtoSelect.innerHTML = '<option value="">Nenhum produto com lote ativo</option>';
+            }
         } else {
             produtoSelect.innerHTML = '<option value="">Nenhum produto com lote ativo</option>';
         }
-        return; // Para aqui, esperando o usuário selecionar um produto
+        return; 
     }
 
     // Se o gatilho foi a mudança do PRODUTO (e o cliente já está selecionado)
     if (clienteId && produtoId) {
         showLoadingOverlay('Buscando lote ativo...');
 
-        // Busca o lote específico que seja ATIVO e RECEBIDO
-        const endpoint = `Emaf_Estoque?where=(Emaf_Clientes_id,eq,${clienteId})~and(Emaf_Produto_id,eq,${produtoId})~and(Status_Lote,eq,Ativo)~and(Status,eq,Recebido)&limit=1`;
+        // LÓGICA DE CONSULTA CORRIGIDA
+        const whereClause = `(Emaf_Clientes_id,eq,${clienteId})~and(Emaf_Produto_id,eq,${produtoId})~and(Status_Lote,eq,Ativo)~and(Status,eq,Recebido)`;
+        const endpoint = `Emaf_Estoque?where=${whereClause}&limit=1`;
+        
         const result = await nocoFetch(endpoint);
 
         if (result && result.list && result.list.length > 0) {
             const loteAtivo = result.list[0];
 
-            // Calcula o saldo restante deste lote
             const consumidoEndpoint = `Emaf_Producao?fields=Qtde_Insumo&where=(Emaf_Estoque_id,eq,${loteAtivo.Id})`;
             const consumidoResult = await nocoFetch(consumidoEndpoint);
             
@@ -1802,7 +1810,6 @@ async function handleProducaoSelectChange(event) {
                 <p><strong>Quantidade Inicial:</strong> ${loteAtivo.Quantidade.toLocaleString('pt-BR')} Kg</p>
                 <p class="text-lg"><strong>Saldo Disponível:</strong> <span class="font-bold text-green-500">${saldo.toLocaleString('pt-BR')} Kg</span></p>
             `;
-
         } else {
             infoBox.innerHTML = '<p class="text-red-500 font-semibold">Nenhum lote ativo encontrado para esta combinação.</p>';
         }
