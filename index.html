@@ -9,6 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-300 transition-colors duration-300">
@@ -47,6 +49,7 @@
                 <nav class="flex-1 mt-6">
     <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg" data-target="dashboard" title="Dashboard"><i class="fas fa-chart-pie"></i></a>
     <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg" data-target="estoque" title="Estoque"><i class="fas fa-warehouse"></i></a>
+    <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg" data-target="producao" title="Produção"><i class="fas fa-industry"></i></a>
     <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg" data-target="equipe" title="Equipe"><i class="fas fa-users"></i></a>
     <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg" data-target="clientes" title="Clientes"><i class="fas fa-handshake"></i></a>
     <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg" data-target="produtos" title="Produtos"><i class="fas fa-box-open"></i></a>
@@ -152,6 +155,128 @@
         </form>
     </div>
 </div>
+<!-- ======================= TELA DE PRODUÇÃO (KANBAN) ======================= -->
+<div id="producao" class="page hidden">
+    <!-- Cabeçalho da Página -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <div>
+            <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Controle de Produção</h2>
+            <p class="text-gray-600 dark:text-gray-300">Acompanhe o status das ordens de produção em tempo real.</p>
+        </div>
+        
+        <div class="flex items-center space-x-2 bg-gray-200 dark:bg-gray-700 p-1 rounded-lg">
+            <button id="toggle-kanban-view" class="px-3 py-1 text-sm rounded-md transition-colors" title="Visualização em Kanban">
+                <i class="fas fa-th-large"></i>
+            </button>
+            <button id="toggle-list-view" class="px-3 py-1 text-sm rounded-md transition-colors" title="Visualização em Lista">
+                <i class="fas fa-list"></i>
+            </button>
+        </div>
+        
+        <button id="show-producao-form" class="bg-brand-gold text-white px-4 py-2 rounded-lg shadow hover:bg-brand-gold-dark transition-colors w-full sm:w-auto flex-shrink-0">
+            <i class="fas fa-plus mr-2"></i>Nova Produção
+        </button>
+    </div>
+
+    <!-- Filtros -->
+    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div>
+            <label for="filter-producao-start-date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">De</label>
+            <input type="date" id="filter-producao-start-date" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+        </div>
+        <div>
+            <label for="filter-producao-end-date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Até</label>
+            <input type="date" id="filter-producao-end-date" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+        </div>
+        <div>
+            <label for="filter-producao-lote" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Lote</label>
+            <input type="text" id="filter-producao-lote" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="Buscar lote...">
+        </div>
+        <div>
+            <label for="filter-producao-responsavel" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Responsável</label>
+            <select id="filter-producao-responsavel" class="producao-filter equipe-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select>
+        </div>
+        <div>
+            <label for="filter-producao-estufa" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Estufa</label>
+            <select id="filter-producao-estufa" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                <option value="">Todas</option>
+                <option value="1">Estufa 1</option>
+                <option value="2">Estufa 2</option>
+                <option value="3">Estufa 3</option>
+                <option value="4">Estufa 4</option>
+            </select>
+        </div>
+        <div>
+            <label for="filter-producao-status" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Status</label>
+            <select id="filter-producao-status" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                <option value="">Todos</option>
+                <option value="Pré-preparo">Pré-preparo</option>
+                <option value="Em Produção">Em Produção</option>
+                <option value="Finalizado">Finalizado</option>
+            </select>
+        </div>
+        <div class="md:col-span-3 lg:col-span-6 flex justify-end space-x-4">
+    <button id="generate-producao-report" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 flex items-center">
+        <i class="fas fa-file-pdf mr-2"></i>Gerar Relatório
+    </button>
+    <button id="clear-producao-filters" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Limpar Filtros</button>
+</div>
+    </div>
+
+    <!-- Contêiner para a Visualização Kanban -->
+    <div id="producao-kanban-container">
+        <div id="kanban-board" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Coluna 1: Pré-preparo -->
+            <div class="flex flex-col bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg text-gray-700 dark:text-gray-200">Pré-preparo</h3>
+                    <span id="count-preparo" class="bg-gray-300 dark:bg-gray-600 text-xs font-semibold px-2 py-1 rounded-full">0</span>
+                </div>
+                <div id="kanban-column-preparo" class="flex-1 space-y-4 overflow-y-auto"></div>
+            </div>
+            <!-- Coluna 2: Em Produção -->
+            <div class="flex flex-col bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg text-gray-700 dark:text-gray-200">Em Produção</h3>
+                    <span id="count-producao" class="bg-yellow-300 dark:bg-yellow-600 text-yellow-800 dark:text-yellow-100 text-xs font-semibold px-2 py-1 rounded-full">0</span>
+                </div>
+                <div id="kanban-column-producao" class="flex-1 space-y-4 overflow-y-auto"></div>
+            </div>
+            <!-- Coluna 3: Finalizado -->
+            <div class="flex flex-col bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg text-gray-700 dark:text-gray-200">Finalizado</h3>
+                    <span id="count-finalizado" class="bg-green-300 dark:bg-green-600 text-green-800 dark:text-green-100 text-xs font-semibold px-2 py-1 rounded-full">0</span>
+                </div>
+                <div id="kanban-column-finalizado" class="flex-1 space-y-4 overflow-y-auto"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contêiner para a Visualização em Lista (inicialmente oculto) -->
+    <div id="producao-list-container" class="hidden">
+        <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
+            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">Status</th>
+                        <th scope="col" class="px-6 py-3">Cliente / Produto</th>
+                        <th scope="col" class="px-6 py-3">Lote</th>
+                        <th scope="col" class="px-6 py-3">Início Preparo</th>
+                        <th scope="col" class="px-6 py-3">Início Produção</th>
+                        <th scope="col" class="px-6 py-3">Finalizado</th>
+                        <th scope="col" class="px-6 py-3">Responsável</th>
+                        <th scope="col" class="px-6 py-3">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="producao-table-body">
+                    <!-- Linhas da tabela serão inseridas aqui via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<!-- ======================= FIM DA TELA DE PRODUÇÃO ======================= -->
 
                     <!-- ======================= TELA DE EQUIPE ======================= -->
                     <div id="equipe" class="page hidden">
@@ -239,15 +364,28 @@
                             </form>
                         </div>
                     </div>
-                    <!-- ======================= TELA DE DASHBOARD ======================= -->
-                <!-- ======================= TELA DE DASHBOARD ======================= -->
+<!-- ======================= TELA DE DASHBOARD ATUALIZADA COM ABAS ======================= -->
 <div id="dashboard" class="page hidden">
+    <!-- Navegação das Abas -->
+    <div class="mb-6 border-b border-gray-200 dark:border-gray-700">
+        <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="dashboard-tabs">
+            <li class="mr-2">
+                <button class="dashboard-tab inline-block p-4 border-b-2 rounded-t-lg" data-tab="estoque">Estoque</button>
+            </li>
+            <li class="mr-2">
+                <button class="dashboard-tab inline-block p-4 border-b-2 rounded-t-lg" data-tab="producao">Produção</button>
+            </li>
+        </ul>
+    </div>
+<!-- ======================= ABA DE ESTOQUE (CONTEÚDO ATUALIZADO) ======================= -->
+<div id="dashboard-estoque-content" class="dashboard-tab-content">
+    
     <div class="mb-4">
-        <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Dashboard</h2>
-        <p class="text-gray-600 dark:text-gray-300">Análise do Controle de Estoque</p>
+        <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Análise de Estoque</h2>
+        <p class="text-gray-600 dark:text-gray-300">Visão geral do fluxo de matéria-prima: entradas, consumo e saldos.</p>
     </div>
 
-    <!-- Filtros Globais -->
+    <!-- Filtros Globais (os mesmos de antes) -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
         <div><label for="dash-start-date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">De</label><input type="date" id="dash-start-date" class="dash-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
         <div><label for="dash-end-date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Até</label><input type="date" id="dash-end-date" class="dash-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
@@ -258,60 +396,95 @@
         </div>
     </div>
 
-    <!-- KPIs (Scorecards) - AGORA DENTRO DE UM CARD -->
+    <!-- KPIs de Estoque Atualizados -->
     <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div class="text-center">
                 <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Recebido (Kg)</p>
-                <h3 id="kpi-total-recebido" class="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mt-1">0,00</h3>
+                <h3 id="kpi-total-recebido" class="text-2xl lg:text-3xl font-bold text-green-500 mt-1">0,00</h3>
             </div>
             <div class="text-center">
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Recusado (Kg)</p>
-                <h3 id="kpi-total-recusado" class="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mt-1">0,00</h3>
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Consumido (Kg)</p>
+                <h3 id="kpi-total-consumido" class="text-2xl lg:text-3xl font-bold text-red-500 mt-1">0,00</h3>
             </div>
             <div class="text-center">
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Taxa de Recusa</p>
-                <h3 id="kpi-taxa-recusa" class="text-2xl lg:text-3xl font-bold text-red-500 mt-1">0,0%</h3>
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Saldo Atual (Kg)</p>
+                <h3 id="kpi-saldo-atual" class="text-2xl lg:text-3xl font-bold text-blue-500 mt-1">0,00</h3>
             </div>
             <div class="text-center">
                 <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total de Transações</p>
                 <h3 id="kpi-total-transacoes" class="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mt-1">0</h3>
             </div>
-            <div class="text-center">
-                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Ticket Médio (Kg)</p>
-                <h3 id="kpi-ticket-medio" class="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mt-1">0,00</h3>
-            </div>
         </div>
     </div>
     
-    <!-- Gráficos -->
-    <div class="space-y-6">
-        <!-- Gráfico 1 -->
-        <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
-            <h4 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Movimentação ao Longo do Tempo</h4>
-            <div class="h-80"><canvas id="movimentacao-chart"></canvas></div>
+    <!-- Gráfico de Movimentação (Entrada vs. Saída) -->
+    <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800 mb-6">
+        <h4 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Movimentação de Estoque (Recebido vs. Consumido)</h4>
+        <div class="h-80"><canvas id="movimentacao-chart"></canvas></div>
+    </div>
+
+    <!-- Nova Tabela de Saldo por Produto -->
+    <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+        <h4 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Saldo Atual por Produto</h4>
+        <div id="saldo-produto-table" class="overflow-x-auto">
+            <!-- Tabela será gerada aqui pelo JS -->
         </div>
-        <!-- Gráficos 2 e 3 -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
-                <h4 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Top 5 Produtos por Quantidade Recebida</h4>
-                <div class="h-80"><canvas id="top-produtos-chart"></canvas></div>
-            </div>
-            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
-                <h4 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Top 5 Clientes por Quantidade Recebida</h4>
-                <div class="h-80"><canvas id="top-clientes-chart"></canvas></div>
+    </div>
+
+</div>
+
+    <!-- ======================= NOVA ABA DE PRODUÇÃO ======================= -->
+    <div id="dashboard-producao-content" class="dashboard-tab-content hidden">
+        <div class="mb-4">
+            <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Dashboard de Produção</h2>
+            <p class="text-gray-600 dark:text-gray-300">Análise de performance e eficiência da produção.</p>
+        </div>
+
+        <!-- 1. Filtros Globais -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div><label for="dash-prod-start-date" class="block mb-2 text-sm font-medium">De</label><input type="date" id="dash-prod-start-date" class="dash-prod-filter w-full p-2.5 text-sm rounded-lg"></div>
+            <div><label for="dash-prod-end-date" class="block mb-2 text-sm font-medium">Até</label><input type="date" id="dash-prod-end-date" class="dash-prod-filter w-full p-2.5 text-sm rounded-lg"></div>
+            <div><label for="dash-prod-cliente" class="block mb-2 text-sm font-medium">Cliente</label><select id="dash-prod-cliente" class="dash-prod-filter cliente-select w-full p-2.5 text-sm rounded-lg"></select></div>
+            <div><label for="dash-prod-produto" class="block mb-2 text-sm font-medium">Produto</label><select id="dash-prod-produto" class="dash-prod-filter produto-select w-full p-2.5 text-sm rounded-lg"></select></div>
+            <div><label for="dash-prod-responsavel" class="block mb-2 text-sm font-medium">Responsável</label><select id="dash-prod-responsavel" class="dash-prod-filter equipe-select w-full p-2.5 text-sm rounded-lg"></select></div>
+            <div class="col-span-1 md:col-span-2 lg:col-span-5 flex justify-end">
+                <button id="clear-dash-prod-filters" class="px-4 py-2 text-sm rounded-md">Limpar Filtros</button>
             </div>
         </div>
-        <!-- Gráficos 4 e 5 -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
-                <h4 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Proporção de Status (por Kg)</h4>
-                <div class="h-80 relative mx-auto" style="max-width: 320px;"><canvas id="status-chart"></canvas></div>
+
+        <!-- 2. KPIs Principais -->
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div class="text-center"><p class="text-sm">Total Produzido (Kg)</p><h3 id="kpi-prod-total" class="text-3xl font-bold">0,00</h3></div>
+                <div class="text-center"><p class="text-sm">Pedidos Finalizados</p><h3 id="kpi-prod-pedidos" class="text-3xl font-bold">0</h3></div>
+                <div class="text-center"><p class="text-sm">Rendimento Médio</p><h3 id="kpi-prod-rendimento" class="text-3xl font-bold text-green-500">0,0%</h3></div>
+                <div class="text-center"><p class="text-sm">Tempo Médio de Ciclo</p><h3 id="kpi-prod-tempo-ciclo" class="text-3xl font-bold">0h 0m</h3></div>
+                <div class="text-center"><p class="text-sm">Pedidos em Andamento</p><h3 id="kpi-prod-wip" class="text-3xl font-bold text-yellow-500">0</h3></div>
             </div>
-            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
-                <h4 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Detalhamento de Recusas por Produto</h4>
-                <div class="h-80"><canvas id="recusas-produto-chart"></canvas></div>
+        </div>
+
+        <!-- 3. Visualizações Gráficas -->
+        <div class="space-y-6">
+            <!-- Gráfico 1: Produção e Rendimento ao Longo do Tempo -->
+            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800"><h4 class="text-xl font-semibold mb-4">Produção e Rendimento ao Longo do Tempo</h4><div class="h-80"><canvas id="producao-tempo-chart"></canvas></div></div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Gráfico 2: Análise de Eficiência por Produto -->
+                <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800"><h4 class="text-xl font-semibold mb-4">Análise de Eficiência por Produto</h4><div class="h-80"><canvas id="eficiencia-produto-chart"></canvas></div></div>
+                <!-- Gráfico 3: Análise de Gargalo (WIP) -->
+                <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800"><h4 class="text-xl font-semibold mb-4">Análise de Gargalo (Pedidos em Andamento)</h4><div class="h-80"><canvas id="gargalo-wip-chart"></canvas></div></div>
             </div>
+
+            <!-- Gráfico 4: Performance de Recursos (Tabela Heatmap) -->
+            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800"><h4 class="text-xl font-semibold mb-4">Performance de Recursos (Pedidos por Responsável/Estufa)</h4><div id="performance-recursos-table" class="overflow-x-auto"></div></div>
+
+            <!-- 4. Tabela de Detalhamento -->
+            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800"><h4 class="text-xl font-semibold mb-4">Detalhamento de Pedidos Finalizados</h4><div class="overflow-x-auto"><table class="w-full text-sm">
+                <thead class="text-xs uppercase"><tr>
+                    <th class="px-4 py-2 text-left">Produto</th><th class="px-4 py-2 text-left">Cliente</th><th class="px-4 py-2 text-left">Finalizado em</th><th class="px-4 py-2 text-right">Insumo (Kg)</th><th class="px-4 py-2 text-right">Final (Kg)</th><th class="px-4 py-2 text-right">Rendimento</th><th class="px-4 py-2 text-right">Duração</th>
+                </tr></thead><tbody id="detalhamento-producao-tbody"></tbody>
+            </table></div></div>
         </div>
     </div>
 </div>
@@ -356,7 +529,107 @@
             </div>
         </div>
     </div>
+     <!-- ======================= INÍCIO DOS MODAIS DE PRODUÇÃO ======================= -->
+
+    <!-- Modal para Nova Produção / Edição -->
+    <div id="producao-modal" class="fixed inset-0 z-40 items-center justify-center hidden bg-black bg-opacity-60 modal-bg-animate">
+        <div class="w-full max-w-2xl p-6 mx-4 bg-white rounded-lg shadow-lg dark:bg-gray-800 modal-content-animate">
+            <div class="flex justify-between items-center border-b pb-3 dark:border-gray-700">
+                <h2 id="producao-modal-title" class="text-2xl font-bold text-gray-900 dark:text-white">Nova Ordem de Produção</h2>
+                <button id="close-producao-modal" class="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white text-3xl leading-none">&times;</button>
+            </div>
+            
+            <form id="producao-form" class="mt-4">
+                <input type="hidden" id="producao-Id">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                    <!-- Seleção de Cliente e Produto -->
+                    <div><label for="producao-Cliente" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cliente</label><select id="producao-Cliente" class="cliente-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required></select></div>
+                    <div><label for="producao-Produto" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Produto</label><select id="producao-Produto" class="produto-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required></select></div>
+
+                    <!-- Informações do Estoque (serão preenchidas via JS) -->
+                    <div class="md:col-span-2 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                        <h4 class="text-sm font-semibold text-gray-800 dark:text-white mb-2">Informações do Lote de Origem</h4>
+                        <div id="producao-estoque-info" class="text-sm text-gray-600 dark:text-gray-300">
+                            <p>Selecione um cliente e produto para ver o lote ativo.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Quantidade e Responsável -->
+                    <div><label for="producao-Qtde_Insumo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Quantidade a Utilizar (Kg)</label><input type="text" inputmode="decimal" id="producao-Qtde_Insumo" placeholder="Ex: 250,50" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required></div>
+                    <div><label for="producao-Equipe" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Responsável</label><select id="producao-Equipe" class="equipe-select bg-gray-200 border border-gray-300 text-gray-700 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-400" required disabled></select></div>
+                    
+                    <!-- Observação -->
+                    <div class="md:col-span-2"><label for="producao-Observacao" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Observação (Opcional)</label><textarea id="producao-Observacao" rows="2" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-brand-gold focus:border-brand-gold dark:bg-gray-700 dark:border-gray-600 dark:text-white"></textarea></div>
+                </div>
+
+                <div class="flex justify-end mt-6 space-x-4">
+                    <button type="button" id="cancel-producao-form" class="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">Cancelar</button>
+                    <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-brand-gold rounded-md hover:bg-brand-gold-dark">Salvar e Iniciar Preparo</button>
+                </div>
+            </form>
+        </div>
+    </div>
     
+    <!-- Modal Genérico para Confirmação de Ações -->
+    <div id="action-confirm-modal" class="fixed inset-0 z-[70] items-center justify-center hidden bg-black bg-opacity-60 modal-bg-animate">
+        <div class="w-full max-w-sm p-6 mx-4 bg-white rounded-lg shadow-lg dark:bg-gray-800 modal-content-animate">
+            <h2 id="action-confirm-modal-title" class="text-xl font-bold text-gray-900 dark:text-white">Confirmar Ação</h2>
+            <p id="action-confirm-modal-content" class="mt-2 text-sm text-gray-600 dark:text-gray-400">Você tem certeza que deseja executar esta ação?</p>
+            <div class="flex justify-end mt-6 space-x-4">
+                <button id="cancel-action-btn" class="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">Cancelar</button>
+                <button id="confirm-action-btn" class="px-6 py-2 text-sm font-medium text-white bg-brand-gold rounded-md hover:bg-brand-gold-dark">Confirmar</button>
+            </div>
+        </div>
+    </div>
+<!-- Modal para Detalhes da Produção (Estufa e Bandeja) -->
+    <div id="liofilizacao-details-modal" class="fixed inset-0 z-[70] items-center justify-center hidden bg-black bg-opacity-60 modal-bg-animate">
+        <div class="w-full max-w-md p-6 mx-4 bg-white rounded-lg shadow-lg dark:bg-gray-800 modal-content-animate">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Detalhes da Produção</h2>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Por favor, informe a estufa e a quantidade de bandejas para iniciar o processo.</p>
+            
+            <form id="liofilizacao-form" class="mt-4 space-y-4">
+                <div>
+                    <label for="liofilizacao-Estufa" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Estufa</label>
+                    <select id="liofilizacao-Estufa" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+                        <option value="">Selecione...</option>
+                        <option value="1">Estufa 1</option>
+                        <option value="2">Estufa 2</option>
+                        <option value="3">Estufa 3</option>
+                        <option value="4">Estufa 4</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="liofilizacao-Bandeja" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Quantidade de Bandejas</label>
+                    <input type="number" id="liofilizacao-Bandeja" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required min="1">
+                </div>
+                <div class="flex justify-end pt-4 space-x-4 border-t dark:border-gray-600">
+                    <button type="button" id="cancel-liofilizacao-form" class="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">Cancelar</button>
+                    <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-yellow-500 rounded-md hover:bg-yellow-600">Confirmar e Iniciar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Modal para Inserir Quantidade Final -->
+    <div id="qtd-final-modal" class="fixed inset-0 z-[70] items-center justify-center hidden bg-black bg-opacity-60 modal-bg-animate">
+        <div class="w-full max-w-md p-6 mx-4 bg-white rounded-lg shadow-lg dark:bg-gray-800 modal-content-animate">
+            <h2 id="qtd-final-modal-title" class="text-xl font-bold text-gray-900 dark:text-white">Informar Quantidade Final</h2>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Insira a quantidade final produzida (em Kg) para esta ordem de produção.</p>
+            
+            <form id="qtd-final-form" class="mt-4 space-y-4">
+                <div>
+                    <label for="qtd-final-input" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Quantidade Final (Kg)</label>
+                    <input type="text" inputmode="decimal" id="qtd-final-input" placeholder="Ex: 120,75" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+                </div>
+
+                <div class="flex justify-end pt-4 space-x-4 border-t dark:border-gray-600">
+                    <button type="button" id="cancel-qtd-final-form" class="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">Cancelar</button>
+                    <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600">Confirmar e Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- ======================= FIM DOS MODAIS DE PRODUÇÃO ======================= -->
     <!-- Overlay de Carregamento -->
     <div id="loading-overlay" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black bg-opacity-60 hidden">
         <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-brand-gold"></div>
