@@ -50,6 +50,7 @@ const charts = {
         producao: 'Emaf_Producao'
     };
    const TODAS_ESTUFAS = ['1', '2', '3', '4'];
+   const TODOS_CONTAINERS = ['Container 1', 'Container 2', 'In Natura'];
 
     // --- Mapeamento de Nomes de Campos para Rótulos Amigáveis ---
     const GLOBAL_LABEL_MAP = {
@@ -1659,41 +1660,66 @@ async function handleQtdFinalFormSubmit(e) {
     
     hideLoadingOverlay();
 }
-   function setupForm(type, id = null) {
-        // Esconde o container da lista/tabela e mostra o container do formulário.
-        setupFormAndListVisibility(type, true);
 
-        const form = document.getElementById(`${type}-form`);
-        const title = document.getElementById(`${type}-form-title`);
-        form.reset();
-        form.querySelectorAll('img[id$="-preview"]').forEach(img => {
-            img.src = "https://placehold.co/100x100/e2e8f0/cbd5e0?text=Foto";
-            if (!img.classList.contains('hidden')) {
-                img.classList.add('hidden');
-            }
-        });
-        
-        document.getElementById(`${type}-Id`).value = id || '';
-        title.textContent = id ? `Editar ${capitalize(type)}` : `Novo ${capitalize(type)}`;
-        
-        if (id) {
-            const dataArray = { equipe: equipeData, clientes: clientesData, produtos: produtosData, estoque: estoqueData }[type];
-            const item = dataArray.find(d => d.Id == id);
-            if(item) populateForm(form, item);
-        } else {
-             if(type === 'estoque') {
-                const dataInput = form.querySelector('#estoque-Data');
-                const now = new Date();
-                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-                dataInput.value = now.toISOString().slice(0, 16);
-                form.querySelector('#estoque-Emaf_Equipe').value = loggedInUser.Id;
-            }
+function setupForm(type, id = null) {
+    setupFormAndListVisibility(type, true);
+
+    const form = document.getElementById(`${type}-form`);
+    const title = document.getElementById(`${type}-form-title`);
+    form.reset();
+    form.querySelectorAll('img[id$="-preview"]').forEach(img => {
+        img.src = "https://placehold.co/100x100/e2e8f0/cbd5e0?text=Foto";
+        if (!img.classList.contains('hidden')) {
+            img.classList.add('hidden');
         }
+    });
+    
+    document.getElementById(`${type}-Id`).value = id || '';
+    title.textContent = id ? `Editar ${capitalize(type)}` : `Novo ${capitalize(type)}`;
+    
+    const item = id ? { equipe: equipeData, clientes: clientesData, produtos: produtosData, estoque: estoqueData }[type].find(d => d.Id == id) : null;
+
+    // --- LÓGICA DE CONTAINER DINÂMICO ---
+    if (type === 'estoque') {
+        const containerSelect = form.querySelector('#estoque-Container');
         
-        if (type === 'estoque') {
-            toggleRecusadoFields();
+        // 1. Encontra todos os containers em uso (associados a um lote ativo)
+        const occupiedContainers = estoqueData
+            .filter(e => e.Status_Lote === 'Ativo')
+            .map(e => e.Container);
+        
+        // 2. Encontra o container do item que está sendo editado (se houver)
+        const currentContainer = item ? item.Container : null;
+        
+        // 3. Gera a lista de containers disponíveis
+        const availableContainers = TODOS_CONTAINERS.filter(c => 
+            !occupiedContainers.includes(c) || c === currentContainer
+        );
+
+        // 4. Popula o select com as opções disponíveis
+        let optionsHTML = '<option value="">Selecione</option>';
+        availableContainers.forEach(c => {
+            optionsHTML += `<option value="${c}">${c}</option>`;
+        });
+        containerSelect.innerHTML = optionsHTML;
+    }
+
+    if (item) {
+        populateForm(form, item);
+    } else {
+         if(type === 'estoque') {
+            const dataInput = form.querySelector('#estoque-Data');
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            dataInput.value = now.toISOString().slice(0, 16);
+            form.querySelector('#estoque-Emaf_Equipe').value = loggedInUser.Id;
         }
     }
+    
+    if (type === 'estoque') {
+        toggleRecusadoFields();
+    }
+}
 
     function populateForm(form, data) {
         for(const key in data) {
@@ -2054,102 +2080,110 @@ async function handleProducaoFormSubmit(e) {
     
     hideLoadingOverlay();
 }
-   async function handleFormSubmit(e) {
-        e.preventDefault();
-        const form = e.target;
-        const type = form.id.replace('-form', ''); 
-        const id = document.getElementById(`${type}-Id`).value;
-        const method = id ? 'PATCH' : 'POST';
+async function handleFormSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const type = form.id.replace('-form', ''); 
+    const id = document.getElementById(`${type}-Id`).value;
+    const method = id ? 'PATCH' : 'POST';
 
-        const tableName = TABLE_NAME_MAP[type];
-        if (!tableName) {
-            alert(`Erro interno: Tipo de formulário desconhecido "${type}".`);
-            return;
-        }
-        const endpoint = id ? `${tableName}/${id}` : tableName;
-        
-        showLoadingOverlay(id ? 'Atualizando...' : 'Salvando...');
-        
-        let body = {};
-        try {
-            const equipeInput = form.querySelector('#estoque-Emaf_Equipe');
-            const dataInput = form.querySelector('#estoque-Data');
-            const wereDisabled = { equipe: equipeInput?.disabled, data: dataInput?.disabled };
-            if (equipeInput) equipeInput.disabled = false;
-            if (dataInput) dataInput.disabled = false;
-
-            const formElements = form.querySelectorAll('input, select, textarea');
-            for (const el of formElements) {
-                if (!el.id || el.type === 'file' || el.type === 'hidden') continue;
-
-                const key = el.id.replace(`${type}-`, '');
-                let value = el.value.trim();
-
-                if (el.required && !value) {
-                    throw new Error(`O campo "${el.labels[0]?.textContent || key}" é obrigatório.`);
-                }
-                
-                if (el.id === 'estoque-Quantidade') {
-                    if (value) {
-                        const sanitizedValue = value.replace(/\./g, '').replace(',', '.');
-                        const numericValue = parseFloat(sanitizedValue);
-                        if (isNaN(numericValue)) {
-                            throw new Error('O valor do campo "Quantidade" é inválido.');
-                        }
-                        body[key] = numericValue;
-                    } else {
-                        body[key] = 0;
-                    }
-                } else if (el.tagName === 'SELECT' && key.startsWith('Emaf_')) {
-                    const relationId = parseInt(value);
-                    if (!relationId && el.required) throw new Error(`O campo "${el.labels[0]?.textContent || key}" é obrigatório.`);
-                    
-                    if (relationId) {
-                        if(id) { body[`${key}_id`] = relationId; } 
-                        else { body[key] = { "Id": relationId }; }
-                    }
-                } else if(el.type === 'datetime-local') {
-                    body[key] = value ? new Date(value).toISOString() : null;
-                } else {
-                    body[key] = value;
-                }
-            }
-            
-            if (equipeInput) equipeInput.disabled = wereDisabled.equipe;
-            if (dataInput) dataInput.disabled = wereDisabled.data;
-
-            const fileInputs = form.querySelectorAll('input[type="file"]');
-            for (const fileInput of fileInputs) {
-                if (fileInput.files.length > 0) {
-                    const columnName = fileInput.id.replace(`${type}-`, '');
-                    const uploadTableName = TABLE_NAME_MAP[type];
-                    const fileData = await uploadFile(uploadTableName, columnName, fileInput.files[0]);
-                    if (fileData) body[columnName] = [fileData];
-                } else if (fileInput.required) {
-                     throw new Error(`O campo "${fileInput.labels[0]?.textContent || fileInput.id}" é obrigatório.`);
-                }
-            }
-            if(type === 'equipe' && id && (body.Senha === '' || typeof body.Senha === 'undefined')) {
-                delete body.Senha;
-            } else if (type === 'equipe' && !id && !body.Senha) {
-                throw new Error("O campo Senha é obrigatório para novos membros.");
-            }
-
-        if (type === 'estoque' && method === 'POST') {
-            body.Status_Lote = 'Ativo';
-        }
-            const result = await nocoFetch(endpoint, { method, body: JSON.stringify(body) });
-            
-            if (result) {
-                await fetchAllData();
-                setupFormAndListVisibility(type, false);
-            }
-        } catch (error) {
-            alert(`Erro ao salvar: ${error.message}`);
-        } finally {
-            hideLoadingOverlay();
-        }
+    const tableName = TABLE_NAME_MAP[type];
+    if (!tableName) {
+        alert(`Erro interno: Tipo de formulário desconhecido "${type}".`);
+        return;
     }
+    const endpoint = id ? `${tableName}/${id}` : tableName;
+    
+    showLoadingOverlay(id ? 'Atualizando...' : 'Salvando...');
+    
+    let body = {};
+    try {
+        const equipeInput = form.querySelector('#estoque-Emaf_Equipe');
+        const dataInput = form.querySelector('#estoque-Data');
+        const wereDisabled = { equipe: equipeInput?.disabled, data: dataInput?.disabled };
+        if (equipeInput) equipeInput.disabled = false;
+        if (dataInput) dataInput.disabled = false;
+
+        const formElements = form.querySelectorAll('input, select, textarea');
+        for (const el of formElements) {
+            if (!el.id || el.type === 'file' || el.type === 'hidden') continue;
+
+            const key = el.id.replace(`${type}-`, '');
+            let value = el.value.trim();
+
+            if (el.required && !value) {
+                throw new Error(`O campo "${el.labels[0]?.textContent || key}" é obrigatório.`);
+            }
+            
+            if (el.id === 'estoque-Quantidade') {
+                if (value) {
+                    const sanitizedValue = value.replace(/\./g, '').replace(',', '.');
+                    const numericValue = parseFloat(sanitizedValue);
+                    if (isNaN(numericValue)) {
+                        throw new Error('O valor do campo "Quantidade" é inválido.');
+                    }
+                    body[key] = numericValue;
+                } else {
+                    body[key] = 0;
+                }
+            } else if (el.tagName === 'SELECT' && key.startsWith('Emaf_')) {
+                const relationId = parseInt(value);
+                if (!relationId && el.required) throw new Error(`O campo "${el.labels[0]?.textContent || key}" é obrigatório.`);
+                
+                if (relationId) {
+                    if(id) { body[`${key}_id`] = relationId; } 
+                    else { body[key] = { "Id": relationId }; }
+                }
+            } else if(el.type === 'datetime-local') {
+                body[key] = value ? new Date(value).toISOString() : null;
+            } else {
+                body[key] = value;
+            }
+        }
+        
+        if (equipeInput) equipeInput.disabled = wereDisabled.equipe;
+        if (dataInput) dataInput.disabled = wereDisabled.data;
+
+        // --- NOVA LÓGICA PARA O CAMPO CONTAINER ---
+        if (type === 'estoque') {
+            if (body.Status === 'Recusado') {
+                body.Container = ''; // Limpa o container se o status for Recusado
+            }
+            if (method === 'POST' && body.Status === 'Recebido') {
+                body.Status_Lote = 'Ativo'; // Define como ativo apenas se for Recebido
+            }
+        }
+
+        const fileInputs = form.querySelectorAll('input[type="file"]');
+        for (const fileInput of fileInputs) {
+            if (fileInput.files.length > 0) {
+                const columnName = fileInput.id.replace(`${type}-`, '');
+                const uploadTableName = TABLE_NAME_MAP[type];
+                const fileData = await uploadFile(uploadTableName, columnName, fileInput.files[0]);
+                if (fileData) body[columnName] = [fileData];
+            } else if (fileInput.required) {
+                 throw new Error(`O campo "${fileInput.labels[0]?.textContent || fileInput.id}" é obrigatório.`);
+            }
+        }
+
+        if(type === 'equipe' && id && (body.Senha === '' || typeof body.Senha === 'undefined')) {
+            delete body.Senha;
+        } else if (type === 'equipe' && !id && !body.Senha) {
+            throw new Error("O campo Senha é obrigatório para novos membros.");
+        }
+
+        const result = await nocoFetch(endpoint, { method, body: JSON.stringify(body) });
+        
+        if (result) {
+            await fetchAllData();
+            setupFormAndListVisibility(type, false);
+        }
+    } catch (error) {
+        alert(`Erro ao salvar: ${error.message}`);
+    } finally {
+        hideLoadingOverlay();
+    }
+}
 // Função do modal de detalhes, atualizada para incluir a 'producaoData'
 function openDetailsModal(element) {
     const id = element.dataset.id;
