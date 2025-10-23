@@ -1693,7 +1693,7 @@ function setupForm(type, id = null) {
         
         // 3. Gera a lista de containers disponíveis
         const availableContainers = TODOS_CONTAINERS.filter(c => 
-            !occupiedContainers.includes(c) || c === currentContainer
+            !occupiedContainers.includes(c) || c === currentContainer || c === 'In Natura'
         );
 
         // 4. Popula o select com as opções disponíveis
