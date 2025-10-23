@@ -2135,6 +2135,9 @@ async function handleProducaoFormSubmit(e) {
                 throw new Error("O campo Senha é obrigatório para novos membros.");
             }
 
+        if (type === 'estoque' && method === 'POST') {
+            body.Status_Lote = 'Ativo';
+        }
             const result = await nocoFetch(endpoint, { method, body: JSON.stringify(body) });
             
             if (result) {
