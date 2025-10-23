@@ -1,5 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // --- Configuração da API ---    
+    // --- Configuração da API ---   
+     
     // O token agora é nulo no frontend, pois ele será adicionado no backend (Netlify Function)
     const API_TOKEN = null; 
     
@@ -158,34 +159,43 @@ function calculateDuration(startISO, endISO) {
         
         document.body.appendChild(overlay);
     }
-    async function nocoFetch(endpoint, options = {}) {
-        try {
-            const separator = endpoint.includes('?') ? '&' : '?';
-            const fullUrl = `${NOCODB_BASE_URL}${NOCODB_PROJECT_PATH}/${endpoint}${separator}limit=2000`;
-
-            const response = await fetch(fullUrl, {
-                ...options,
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...options.headers,
-                },
-            });
-            if (!response.ok) {
-                const errorData = await response.json();
-                const errorMessage = `HTTP ${response.status}: ${errorData.msg || response.statusText}`;
-                throw new Error(errorMessage);
-            }
-            if (options.method === 'DELETE' || response.status === 204) {
-                return { success: true };
-            }
-            return await response.json();
-        } catch (error) {
-            console.error(`Falha no fetch para ${endpoint}:`, error);
-            alert(`Ocorreu um erro de comunicação com o servidor. Verifique o console (F12) para mais detalhes.\n\nDetalhes: ${error.message}`);
-            hideLoadingOverlay(); 
-            return null;
+async function nocoFetch(endpoint, options = {}) {
+    try {
+        // Separa o endpoint do caminho e da query string
+        const [path, query] = endpoint.split('?');
+        
+        // Constrói a query string final
+        let finalQuery = 'limit=2000';
+        if (query) {
+            finalQuery += `&${query}`;
         }
+        
+        // Monta a URL final corretamente
+        const fullUrl = `${NOCODB_BASE_URL}${NOCODB_PROJECT_PATH}/${path}?${finalQuery}`;
+
+        const response = await fetch(fullUrl, {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers,
+            },
+        });
+        if (!response.ok) {
+            const errorData = await response.json();
+            const errorMessage = `HTTP ${response.status}: ${errorData.msg || response.statusText}`;
+            throw new Error(errorMessage);
+        }
+        if (options.method === 'DELETE' || response.status === 204) {
+            return { success: true };
+        }
+        return await response.json();
+    } catch (error) {
+        console.error(`Falha no fetch para ${endpoint}:`, error);
+        alert(`Ocorreu um erro de comunicação com o servidor. Verifique o console (F12) para mais detalhes.\n\nDetalhes: ${error.message}`);
+        hideLoadingOverlay(); 
+        return null;
     }
+}
 async function uploadFile(tableName, columnName, file) {
     // A URL agora aponta para nossa nova função de upload, passando os parâmetros na URL
     const uploadUrl = `/.netlify/functions/upload?tableName=${tableName}&columnName=${columnName}`;
@@ -1819,13 +1829,16 @@ async function handleProducaoSelectChange(event) {
 }
 async function handleProducaoFormSubmit(e) {
     e.preventDefault();
-    
+
+    const form = e.target;
+    const id = form.querySelector('#producao-Id').value;
+    const method = id ? 'PATCH' : 'POST';
+
     if (!activeLoteProducao) {
         alert("Erro: Nenhum lote de origem válido foi selecionado. Por favor, verifique o cliente e o produto.");
         return;
     }
 
-    const form = e.target;
     const qtdeInsumoInput = form.querySelector('#producao-Qtde_Insumo');
     const qtdeInsumoValue = qtdeInsumoInput.value.replace(/\./g, '').replace(',', '.');
     const qtdeInsumo = parseFloat(qtdeInsumoValue);
@@ -1835,33 +1848,46 @@ async function handleProducaoFormSubmit(e) {
         return;
     }
 
-    if (qtdeInsumo > activeLoteProducao.saldo) {
-        alert(`Erro: A quantidade a utilizar (${qtdeInsumo.toLocaleString('pt-BR')} Kg) é maior que o saldo disponível no lote (${activeLoteProducao.saldo.toLocaleString('pt-BR')} Kg).`);
+    const saldoDisponivel = id ? (activeLoteProducao.saldo + activeProducaoItem.Qtde_Insumo) : activeLoteProducao.saldo;
+    
+    if (qtdeInsumo > saldoDisponivel) {
+        alert(`Erro: A quantidade a utilizar (${qtdeInsumo.toLocaleString('pt-BR')} Kg) é maior que o saldo disponível no lote (${saldoDisponivel.toLocaleString('pt-BR')} Kg).`);
         return;
     }
 
-    showLoadingOverlay('Criando nova ordem de produção...');
+    showLoadingOverlay(id ? 'Atualizando...' : 'Criando...');
     
-    const body = {
-        Emaf_Clientes: { Id: parseInt(form.querySelector('#producao-Cliente').value) },
-        Emaf_Produto: { Id: parseInt(form.querySelector('#producao-Produto').value) },
-        Emaf_Equipe: { Id: parseInt(form.querySelector('#producao-Equipe').value) },
-        Emaf_Estoque: { Id: activeLoteProducao.Id },
+    let body = {
         Qtde_Insumo: qtdeInsumo,
         Observacao: form.querySelector('#producao-Observacao').value,
-        Status: 'Pré-preparo',
-        Inicio_Preparo: new Date().toISOString()
     };
+    
+    // NocoDB usa formatos diferentes para POST (criar) e PATCH (atualizar) relacionamentos
+    if (method === 'POST') {
+        body.Emaf_Clientes = { Id: parseInt(form.querySelector('#producao-Cliente').value) };
+        body.Emaf_Produto = { Id: parseInt(form.querySelector('#producao-Produto').value) };
+        body.Emaf_Equipe = { Id: parseInt(form.querySelector('#producao-Equipe').value) };
+        body.Emaf_Estoque = { Id: activeLoteProducao.Id };
+        body.Status = 'Pré-preparo';
+        body.Inicio_Preparo = new Date().toISOString();
+    } else { // PATCH
+        body.Emaf_Clientes_id = parseInt(form.querySelector('#producao-Cliente').value);
+        body.Emaf_Produto_id = parseInt(form.querySelector('#producao-Produto').value);
+        body.Emaf_Equipe_id = parseInt(form.querySelector('#producao-Equipe').value);
+        body.Emaf_Estoque_id = activeLoteProducao.Id;
+    }
 
-    const result = await nocoFetch(TABLE_NAME_MAP.producao, { 
-        method: 'POST', 
+    const endpoint = id ? `${TABLE_NAME_MAP.producao}/${id}` : TABLE_NAME_MAP.producao;
+
+    const result = await nocoFetch(endpoint, { 
+        method: method, 
         body: JSON.stringify(body) 
     });
 
     if (result) {
         hideModal(document.getElementById('producao-modal'));
-        await checkAndFinalizeLote(activeLoteProducao.Id); // Verifica se o lote zerou
-        await fetchAllData(); // Recarrega todos os dados e renderiza a tela
+        await checkAndFinalizeLote(activeLoteProducao.Id);
+        await fetchAllData();
     }
     
     hideLoadingOverlay();
