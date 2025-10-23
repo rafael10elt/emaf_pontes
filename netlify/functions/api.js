@@ -3,44 +3,40 @@
 const fetch = require('node-fetch');
 
 exports.handler = async function(event, context) {
-    // Pega as variáveis de ambiente seguras
     const API_URL_BASE = process.env.NOCODB_API_URL;
     const API_TOKEN = process.env.NOCODB_API_TOKEN;
 
-    // Pega o caminho do endpoint a partir da URL
-    const apiPath = event.path.replace('/.netlify/functions/api/', '');
+    if (!API_URL_BASE || !API_TOKEN) {
+        return { statusCode: 500, body: JSON.stringify({ error: "Variáveis de ambiente não configuradas no servidor." }) };
+    }
 
-    // Constrói a string de parâmetros de consulta (query string)
+    const apiPath = event.path.replace('/.netlify/functions/api/', '');
     const queryString = event.rawQuery ? `?${event.rawQuery}` : '';
-    
-    // Monta a URL final completa, incluindo a base, o caminho e os parâmetros
     const fullNocoDBUrl = `${API_URL_BASE}/${apiPath}${queryString}`;
 
-    try {
-        const response = await fetch(fullNocoDBUrl, {
-            method: event.httpMethod,
-            headers: {
-                'Content-Type': 'application/json',
-                'xc-token': API_TOKEN,
-            },
-            // Repassa o corpo da requisição apenas se ele existir (para POST, PATCH)
-            body: event.body ? event.body : undefined 
-        });
+    const fetchOptions = {
+        method: event.httpMethod,
+        headers: {
+            'Content-Type': 'application/json',
+            'xc-token': API_TOKEN,
+        },
+    };
 
-        // Tenta ler a resposta como JSON. Se falhar (ex: resposta vazia), retorna sucesso.
-        let data;
-        try {
-            data = await response.json();
-        } catch (e) {
-            // Se o corpo da resposta for vazio (comum em DELETE), consideramos sucesso
-            if (response.ok) {
-                return { statusCode: 200, body: JSON.stringify({ success: true }) };
-            }
-            // Se não for OK e não for JSON, é um erro de servidor
-            throw new Error(`Resposta inválida do servidor: ${response.statusText}`);
+    // Adiciona o corpo (body) apenas para métodos que o suportam e se ele existir.
+    if (['POST', 'PATCH'].includes(event.httpMethod) && event.body) {
+        fetchOptions.body = event.body;
+    }
+
+    try {
+        const response = await fetch(fullNocoDBUrl, fetchOptions);
+
+        // Para DELETE ou respostas sem conteúdo, retorna sucesso.
+        if (response.status === 204 || event.httpMethod === 'DELETE') {
+            return { statusCode: 200, body: JSON.stringify({ success: true }) };
         }
 
-        // Se a resposta do NocoDB não for OK, repassa o erro
+        const data = await response.json();
+
         if (!response.ok) {
             return {
                 statusCode: response.status,
@@ -48,7 +44,6 @@ exports.handler = async function(event, context) {
             };
         }
 
-        // Se tudo deu certo, retorna os dados
         return {
             statusCode: 200,
             headers: { 'Content-Type': 'application/json' },
@@ -56,7 +51,7 @@ exports.handler = async function(event, context) {
         };
 
     } catch (error) {
-        console.error("Erro na função Netlify:", error);
+        console.error("Erro na função Netlify 'api.js':", error);
         return {
             statusCode: 500,
             body: JSON.stringify({ 

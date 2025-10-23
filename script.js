@@ -156,11 +156,6 @@ function calculateDuration(startISO, endISO) {
         document.body.appendChild(overlay);
     }
     async function nocoFetch(endpoint, options = {}) {
-        if (!API_TOKEN || API_TOKEN === 'SEU_TOKEN_AQUI') {
-             alert('ERRO: Token da API não configurado no arquivo script.js. Por favor, adicione seu token do NocoDB.');
-             hideLoadingOverlay();
-             return null;
-        }
         try {
             const separator = endpoint.includes('?') ? '&' : '?';
             const fullUrl = `${NOCODB_BASE_URL}${NOCODB_PROJECT_PATH}/${endpoint}${separator}limit=2000`;
@@ -169,7 +164,6 @@ function calculateDuration(startISO, endISO) {
                 ...options,
                 headers: {
                     'Content-Type': 'application/json',
-                    'xc-token': API_TOKEN,
                     ...options.headers,
                 },
             });
