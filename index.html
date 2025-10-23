@@ -445,72 +445,64 @@
     </div>
 </div>
 
-    <!-- ======================= NOVA ABA DE PRODUÇÃO ======================= -->
-    <div id="dashboard-producao-content" class="dashboard-tab-content hidden">
-        <div class="mb-4">
-            <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Dashboard de Produção</h2>
-            <p class="text-gray-600 dark:text-gray-300">Análise de performance e eficiência da produção.</p>
-        </div>
+<div id="dashboard-producao-content" class="dashboard-tab-content hidden">
+    <div class="mb-4">
+        <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Dashboard de Produção</h2>
+        <p class="text-gray-600 dark:text-gray-300">Análise de performance e eficiência da produção.</p>
+    </div>
 
-        <!-- 1. Filtros Globais -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
-            <div><label for="dash-prod-start-date" class="block mb-2 text-sm font-medium">De</label><input type="date" id="dash-prod-start-date" class="dash-prod-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
-            <div><label for="dash-prod-end-date" class="block mb-2 text-sm font-medium">Até</label><input type="date" id="dash-prod-end-date" class="dash-prod-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
-            <div><label for="dash-prod-cliente" class="block mb-2 text-sm font-medium">Cliente</label><select id="dash-prod-cliente" class="dash-prod-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select></div>
-            <div><label for="dash-prod-produto" class="block mb-2 text-sm font-medium">Produto</label><select id="dash-prod-produto" class="dash-prod-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select></div>
-            <div><label for="dash-prod-responsavel" class="block mb-2 text-sm font-medium">Responsável</label><select id="dash-prod-responsavel" class="dash-prod-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select></div>
-            <div class="col-span-1 md:col-span-2 lg:col-span-5 flex justify-end">
-                <button id="clear-dash-prod-filters" class="px-4 py-2 text-sm rounded-md">Limpar Filtros</button>
-            </div>
-        </div>
-
-        <!-- 2. KPIs Principais -->
-        <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                <div class="text-center"><p class="text-sm">Total Produzido (Kg)</p><h3 id="kpi-prod-total" class="text-3xl font-bold">0,00</h3></div>
-                <div class="text-center"><p class="text-sm">Pedidos Finalizados</p><h3 id="kpi-prod-pedidos" class="text-3xl font-bold">0</h3></div>
-                <div class="text-center"><p class="text-sm">Rendimento Médio</p><h3 id="kpi-prod-rendimento" class="text-3xl font-bold text-green-500">0,0%</h3></div>
-                <div class="text-center"><p class="text-sm">Tempo Médio de Ciclo</p><h3 id="kpi-prod-tempo-ciclo" class="text-3xl font-bold">0h 0m</h3></div>
-                <div class="text-center"><p class="text-sm">Pedidos em Andamento</p><h3 id="kpi-prod-wip" class="text-3xl font-bold text-yellow-500">0</h3></div>
-            </div>
-        </div>
-
-        <!-- 3. Visualizações Gráficas -->
-        <div class="space-y-6">
-            <!-- Gráfico 1: Produção e Rendimento ao Longo do Tempo -->
-            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800"><h4 class="text-xl font-semibold mb-4">Produção e Rendimento ao Longo do Tempo</h4><div class="h-80"><canvas id="producao-tempo-chart"></canvas></div></div>
-            
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Gráfico 2: Análise de Eficiência por Produto -->
-                <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800"><h4 class="text-xl font-semibold mb-4">Análise de Eficiência por Produto</h4><div class="h-80"><canvas id="eficiencia-produto-chart"></canvas></div></div>
-                <!-- Gráfico 3: Análise de Gargalo (WIP) -->
-                <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800"><h4 class="text-xl font-semibold mb-4">Análise de Gargalo (Pedidos em Andamento)</h4><div class="h-80"><canvas id="gargalo-wip-chart"></canvas></div></div>
-            </div>
-
-            <!-- Gráfico 4: Performance de Recursos (Tabela Heatmap) -->
-            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800"><h4 class="text-xl font-semibold mb-4">Performance de Recursos (Pedidos por Responsável/Estufa)</h4><div id="performance-recursos-table" class="overflow-x-auto"></div></div>
-
-            <!-- 4. Tabela de Detalhamento -->
-            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800"><h4 class="text-xl font-semibold mb-4">Detalhamento de Pedidos Finalizados</h4><div class="overflow-x-auto"><table class="w-full text-sm">
-                <thead class="text-xs uppercase"><tr>
-                    <th class="px-4 py-2 text-left">Produto</th><th class="px-4 py-2 text-left">Cliente</th><th class="px-4 py-2 text-left">Finalizado em</th><th class="px-4 py-2 text-right">Insumo (Kg)</th><th class="px-4 py-2 text-right">Final (Kg)</th><th class="px-4 py-2 text-right">Rendimento</th><th class="px-4 py-2 text-right">Duração</th>
-                </tr></thead><tbody id="detalhamento-producao-tbody"></tbody>
-            </table></div></div>
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-        <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
-            <h4 class="text-xl font-semibold mb-4">Top 5 Clientes por Produção</h4>
-            <div id="ranking-producao-cliente"></div>
-        </div>
-        <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
-            <h4 class="text-xl font-semibold mb-4">Tempo Médio por Produto</h4>
-            <div id="ranking-tempo-produto"></div>
-        </div>
-        <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
-            <h4 class="text-xl font-semibold mb-4">Top 5 Produtos por Rendimento</h4>
-            <div id="ranking-rendimento-produto"></div>
+    <!-- 1. Filtros Globais -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div><label for="dash-prod-start-date" class="block mb-2 text-sm font-medium">De</label><input type="date" id="dash-prod-start-date" class="dash-prod-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
+        <div><label for="dash-prod-end-date" class="block mb-2 text-sm font-medium">Até</label><input type="date" id="dash-prod-end-date" class="dash-prod-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
+        <div><label for="dash-prod-cliente" class="block mb-2 text-sm font-medium">Cliente</label><select id="dash-prod-cliente" class="dash-prod-filter cliente-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select></div>
+        <div><label for="dash-prod-produto" class="block mb-2 text-sm font-medium">Produto</label><select id="dash-prod-produto" class="dash-prod-filter produto-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select></div>
+        <div><label for="dash-prod-responsavel" class="block mb-2 text-sm font-medium">Responsável</label><select id="dash-prod-responsavel" class="dash-prod-filter equipe-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select></div>
+        <div class="col-span-1 md:col-span-2 lg:col-span-5 flex justify-end space-x-4">
+            <button id="clear-dash-prod-filters" class="px-4 py-2 text-sm rounded-md bg-gray-200 text-gray-700">Limpar Filtros</button>
         </div>
     </div>
+
+    <!-- 2. KPIs Principais -->
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div class="text-center"><p class="text-sm">Total Produzido (Kg)</p><h3 id="kpi-prod-total" class="text-3xl font-bold">0,00</h3></div>
+            <div class="text-center"><p class="text-sm">Pedidos Finalizados</p><h3 id="kpi-prod-pedidos" class="text-3xl font-bold">0</h3></div>
+            <div class="text-center"><p class="text-sm">Rendimento Médio</p><h3 id="kpi-prod-rendimento" class="text-3xl font-bold text-green-500">0,0%</h3></div>
+            <div class="text-center"><p class="text-sm">Tempo Médio de Ciclo</p><h3 id="kpi-prod-tempo-ciclo" class="text-3xl font-bold">0h 0m</h3></div>
+            <div class="text-center"><p class="text-sm">Pedidos em Andamento</p><h3 id="kpi-prod-wip" class="text-3xl font-bold text-yellow-500">0</h3></div>
         </div>
+    </div>
+
+    <!-- 3. Visualizações Gráficas e Rankings -->
+    <div class="space-y-6">
+        <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800"><h4 class="text-xl font-semibold mb-4">Produção e Rendimento ao Longo do Tempo</h4><div class="h-80"><canvas id="producao-tempo-chart"></canvas></div></div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800"><h4 class="text-xl font-semibold mb-4">Análise de Eficiência por Produto</h4><div class="h-80"><canvas id="eficiencia-produto-chart"></canvas></div></div>
+            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800"><h4 class="text-xl font-semibold mb-4">Análise de Gargalo (Pedidos em Andamento)</h4><div class="h-80"><canvas id="gargalo-wip-chart"></canvas></div></div>
+        </div>
+        <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800"><h4 class="text-xl font-semibold mb-4">Performance de Recursos (Pedidos por Responsável/Estufa)</h4><div id="performance-recursos-table" class="overflow-x-auto"></div></div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+                <h4 class="text-xl font-semibold mb-4">Top 5 Clientes por Produção</h4>
+                <div id="ranking-producao-cliente"></div>
+            </div>
+            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+                <h4 class="text-xl font-semibold mb-4">Tempo Médio por Produto</h4>
+                <div id="ranking-tempo-produto"></div>
+            </div>
+            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+                <h4 class="text-xl font-semibold mb-4">Top 5 Produtos por Rendimento</h4>
+                <div id="ranking-rendimento-produto"></div>
+            </div>
+        </div>
+        <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800"><h4 class="text-xl font-semibold mb-4">Detalhamento de Pedidos Finalizados</h4><div class="overflow-x-auto"><table class="w-full text-sm">
+            <thead class="text-xs uppercase"><tr>
+                <th class="px-4 py-2 text-left">Produto</th><th class="px-4 py-2 text-left">Cliente</th><th class="px-4 py-2 text-left">Finalizado em</th><th class="px-4 py-2 text-right">Insumo (Kg)</th><th class="px-4 py-2 text-right">Final (Kg)</th><th class="px-4 py-2 text-right">Rendimento</th><th class="px-4 py-2 text-right">Duração</th>
+            </tr></thead><tbody id="detalhamento-producao-tbody"></tbody>
+        </table></div></div>
+    </div>
+</div>
     </div>
 </div>
                 </main>
