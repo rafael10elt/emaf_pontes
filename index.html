@@ -58,9 +58,9 @@
             <div id="sidebar-overlay" class="fixed inset-0 z-20 bg-black bg-opacity-50 hidden lg:hidden"></div>
 
             <!-- Conteúdo Principal -->
-            <div class="flex flex-col flex-1">
-                <header class="flex items-center justify-between h-20 px-6 bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                    <div class="flex items-center">
+<div class="flex flex-col flex-1 min-w-0">
+    <header class="flex items-center justify-between h-20 px-6 bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+             <div class="flex items-center">
                         <button id="sidebar-toggle" class="text-gray-500 dark:text-gray-400 focus:outline-none lg:hidden"><i class="fas fa-bars fa-lg"></i></button>
                         <div class="ml-4 lg:ml-0">
                             <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">Pontes Consultoria</h1>                            
@@ -398,7 +398,7 @@
 
     <!-- KPIs de Estoque Atualizados -->
     <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <div class="text-center">
                 <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Recebido (Kg)</p>
                 <h3 id="kpi-total-recebido" class="text-2xl lg:text-3xl font-bold text-green-500 mt-1">0,00</h3>
@@ -465,7 +465,7 @@
 
     <!-- 2. KPIs Principais -->
     <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <div class="text-center"><p class="text-sm">Total Produzido (Kg)</p><h3 id="kpi-prod-total" class="text-3xl font-bold">0,00</h3></div>
             <div class="text-center"><p class="text-sm">Pedidos Finalizados</p><h3 id="kpi-prod-pedidos" class="text-3xl font-bold">0</h3></div>
             <div class="text-center"><p class="text-sm">Rendimento Médio</p><h3 id="kpi-prod-rendimento" class="text-3xl font-bold text-green-500">0,0%</h3></div>
