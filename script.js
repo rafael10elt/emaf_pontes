@@ -225,19 +225,20 @@ function calculateDuration(startISO, endISO) {
     }
 
 function updateEstoqueDashboard() {
-    // 1. Filtrar os dados de acordo com os filtros da aba de estoque
+    // 1. Filtrar os dados
     const startDate = document.getElementById('dash-start-date').value;
     const endDate = document.getElementById('dash-end-date').value;
     const clienteId = document.getElementById('dash-cliente').value;
     const produtoId = document.getElementById('dash-produto').value;
 
-    const filteredEstoque = estoqueData.filter(item => 
-        item.Status === 'Recebido' &&
+    // Filtra entradas (Recebido e Recusado)
+    const filteredEstoqueAll = estoqueData.filter(item => 
         (!startDate || item.Data.slice(0, 10) >= startDate) &&
         (!endDate || item.Data.slice(0, 10) <= endDate) &&
         (!clienteId || item.Emaf_Clientes?.Id == clienteId) &&
         (!produtoId || item.Emaf_Produto?.Id == produtoId)
     );
+    const filteredEstoqueRecebido = filteredEstoqueAll.filter(item => item.Status === 'Recebido');
 
     const filteredProducao = producaoData.filter(item => 
         (!startDate || item.Inicio_Preparo.slice(0, 10) >= startDate) &&
@@ -246,15 +247,118 @@ function updateEstoqueDashboard() {
         (!produtoId || item.Emaf_Produto?.Id == produtoId)
     );
     
-    // 2. Atualizar KPIs de Estoque
-    updateEstoqueKPIs(filteredEstoque, filteredProducao);
+    // 2. Atualizar KPIs
+    updateEstoqueKPIs(filteredEstoqueRecebido, filteredProducao);
 
-    // 3. Atualizar Gráficos de Estoque
-    // (Vamos reutilizar o gráfico de movimentação para mostrar entradas vs. saídas)
-    updateMovimentacaoEstoqueChart(filteredEstoque, filteredProducao);
+    // 3. Atualizar Gráficos
+    updateMovimentacaoEstoqueChart(filteredEstoqueRecebido, filteredProducao);
     
-    // 4. Nova Tabela: Saldo por Produto
-    renderSaldoPorProdutoTable(filteredEstoque, filteredProducao);
+    // 4. Tabelas e Rankings
+    renderSaldoPorProdutoTable(filteredEstoqueRecebido, filteredProducao);
+    renderRecusasPorClienteRanking(filteredEstoqueAll); // Usa todos os status
+    renderSaldoPorClienteRanking(filteredEstoqueRecebido, filteredProducao);
+}
+
+// ======================= SUBSTITUA A FUNÇÃO ANTIGA POR ESTA =======================
+function renderSaldoPorProdutoTable(entradas, saidas) {
+    const container = document.getElementById('saldo-produto-table');
+    if (!container) return;
+
+    const byCompositeKey = {}; // Chave será "clienteId-produtoId"
+
+    const processItem = (item, type) => {
+        const cliente = item.Emaf_Clientes;
+        const produto = item.Emaf_Produto;
+        if (!cliente || !produto) return;
+
+        const key = `${cliente.Id}-${produto.Id}`;
+        if (!byCompositeKey[key]) {
+            byCompositeKey[key] = { cliente: cliente.Cliente, produto: produto.Produto, recebido: 0, consumido: 0 };
+        }
+        if (type === 'entrada') byCompositeKey[key].recebido += item.Quantidade || 0;
+        if (type === 'saida') byCompositeKey[key].consumido += item.Qtde_Insumo || 0;
+    };
+
+    entradas.forEach(item => processItem(item, 'entrada'));
+    saidas.forEach(item => processItem(item, 'saida'));
+
+    let tableHTML = `<table class="w-full text-sm"><thead><tr class="border-b">
+        <th class="p-2 text-left">Cliente</th>
+        <th class="p-2 text-left">Produto</th>
+        <th class="p-2 text-right">Recebido (Kg)</th>
+        <th class="p-2 text-right">Consumido (Kg)</th>
+        <th class="p-2 text-right font-bold">Saldo (Kg)</th>
+        </tr></thead><tbody>`;
+
+    Object.values(byCompositeKey).sort((a,b) => a.cliente.localeCompare(b.cliente)).forEach(row => {
+        const saldo = row.recebido - row.consumido;
+        tableHTML += `<tr class="border-b dark:border-gray-700">
+            <td class="p-2 text-left font-semibold">${row.cliente}</td>
+            <td class="p-2 text-left">${row.produto}</td>
+            <td class="p-2 text-right">${row.recebido.toLocaleString('pt-BR')}</td>
+            <td class="p-2 text-right">${row.consumido.toLocaleString('pt-BR')}</td>
+            <td class="p-2 text-right font-bold">${saldo.toLocaleString('pt-BR')}</td>
+        </tr>`;
+    });
+    tableHTML += `</tbody></table>`;
+    container.innerHTML = tableHTML;
+}
+
+// ======================= ADICIONE AS DUAS FUNÇÕES ABAIXO =======================
+function renderRecusasPorClienteRanking(entradas) {
+    const container = document.getElementById('ranking-recusas-cliente');
+    if (!container) return;
+
+    const recusadoPorCliente = entradas
+        .filter(item => item.Status === 'Recusado')
+        .reduce((acc, item) => {
+            const cliente = item.Emaf_Clientes?.Cliente || 'N/A';
+            acc[cliente] = (acc[cliente] || 0) + (item.Quantidade || 0);
+            return acc;
+        }, {});
+    
+    const top5 = Object.entries(recusadoPorCliente)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5);
+
+    let listHTML = '<div class="space-y-3">';
+    top5.forEach(([cliente, total]) => {
+        listHTML += `<div class="flex justify-between items-center text-sm">
+            <span class="font-semibold">${cliente}</span>
+            <span class="font-bold text-red-500">${total.toLocaleString('pt-BR')} Kg</span>
+        </div>`;
+    });
+    listHTML += '</div>';
+    container.innerHTML = listHTML;
+}
+
+function renderSaldoPorClienteRanking(entradas, saidas) {
+    const container = document.getElementById('ranking-saldo-cliente');
+    if (!container) return;
+
+    const saldos = {};
+    entradas.forEach(item => {
+        const cliente = item.Emaf_Clientes?.Cliente || 'N/A';
+        saldos[cliente] = (saldos[cliente] || 0) + (item.Quantidade || 0);
+    });
+    saidas.forEach(item => {
+        const cliente = item.Emaf_Clientes?.Cliente || 'N/A';
+        saldos[cliente] = (saldos[cliente] || 0) - (item.Qtde_Insumo || 0);
+    });
+
+    const top5 = Object.entries(saldos)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5);
+
+    let listHTML = '<div class="space-y-3">';
+    top5.forEach(([cliente, total]) => {
+        listHTML += `<div class="flex justify-between items-center text-sm">
+            <span class="font-semibold">${cliente}</span>
+            <span class="font-bold text-blue-500">${total.toLocaleString('pt-BR')} Kg</span>
+        </div>`;
+    });
+    listHTML += '</div>';
+    container.innerHTML = listHTML;
 }
 
 function updateEstoqueKPIs(entradas, saidas) {
@@ -376,7 +480,75 @@ function updateProducaoDashboard() {
     renderPerformanceRecursosTable(filteredData);
     renderDetalhamentoProducaoTable(filteredData);
 }
+function renderTopClientesProducao(data) {
+    const container = document.getElementById('ranking-producao-cliente');
+    if (!container) return;
+    const porCliente = data.filter(d => d.Status === 'Finalizado').reduce((acc, item) => {
+        const cliente = item.Emaf_Clientes?.Cliente || 'N/A';
+        acc[cliente] = (acc[cliente] || 0) + (item.Qtde_Final || 0);
+        return acc;
+    }, {});
+    const top5 = Object.entries(porCliente).sort(([,a],[,b]) => b - a).slice(0, 5);
+    let listHTML = '<div class="space-y-3">';
+    top5.forEach(([cliente, total]) => {
+        listHTML += `<div class="flex justify-between items-center text-sm">
+            <span class="font-semibold">${cliente}</span>
+            <span class="font-bold">${total.toLocaleString('pt-BR')} Kg</span>
+        </div>`;
+    });
+    container.innerHTML = listHTML + '</div>';
+}
 
+function renderTempoMedioPorProduto(data) {
+    const container = document.getElementById('ranking-tempo-produto');
+    if (!container) return;
+    const getDurationInMinutes = (start, end) => (new Date(end) - new Date(start)) / 60000;
+    const porProduto = data.filter(d => d.Status === 'Finalizado').reduce((acc, item) => {
+        const produto = item.Emaf_Produto?.Produto || 'N/A';
+        if (!acc[produto]) acc[produto] = { totalMinutos: 0, count: 0 };
+        acc[produto].totalMinutos += getDurationInMinutes(item.Inicio_Preparo, item.Finalizado);
+        acc[produto].count++;
+        return acc;
+    }, {});
+    const avgTimes = Object.entries(porProduto).map(([produto, {totalMinutos, count}]) => ({
+        produto, avg: totalMinutos / count
+    })).sort((a,b) => a.avg - b.avg);
+
+    let listHTML = '<div class="space-y-3">';
+    avgTimes.forEach(({produto, avg}) => {
+        const hours = Math.floor(avg / 60);
+        const minutes = Math.round(avg % 60);
+        listHTML += `<div class="flex justify-between items-center text-sm">
+            <span class="font-semibold">${produto}</span>
+            <span class="font-bold">${hours}h ${minutes}m</span>
+        </div>`;
+    });
+    container.innerHTML = listHTML + '</div>';
+}
+
+function renderMelhorRendimentoProduto(data) {
+    const container = document.getElementById('ranking-rendimento-produto');
+    if (!container) return;
+    const porProduto = data.filter(d => d.Status === 'Finalizado').reduce((acc, item) => {
+        const produto = item.Emaf_Produto?.Produto || 'N/A';
+        if (!acc[produto]) acc[produto] = { insumo: 0, final: 0 };
+        acc[produto].insumo += item.Qtde_Insumo || 0;
+        acc[produto].final += item.Qtde_Final || 0;
+        return acc;
+    }, {});
+    const yields = Object.entries(porProduto).map(([produto, {insumo, final}]) => ({
+        produto, rendimento: insumo > 0 ? (final / insumo) * 100 : 0
+    })).sort((a,b) => b.rendimento - a.rendimento).slice(0, 5);
+    
+    let listHTML = '<div class="space-y-3">';
+    yields.forEach(({produto, rendimento}) => {
+        listHTML += `<div class="flex justify-between items-center text-sm">
+            <span class="font-semibold">${produto}</span>
+            <span class="font-bold text-green-500">${rendimento.toFixed(1)}%</span>
+        </div>`;
+    });
+    container.innerHTML = listHTML + '</div>';
+}
 function updateProducaoKPIs(data) {
     const finalizados = data.filter(d => d.Status === 'Finalizado');
     
