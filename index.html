@@ -154,7 +154,7 @@
         </form>
     </div>
 </div>
-<!-- ======================= TELA DE PRODUÇÃO (KANBAN) ======================= -->
+<!-- ======================= TELA DE PRODUÇÃO  ======================= -->
 <div id="producao" class="page hidden">
     <!-- Cabeçalho da Página -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
@@ -178,59 +178,21 @@
     </div>
 
     <!-- Filtros -->
-<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
-    <div>
-        <label for="filter-producao-start-date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">De</label>
-        <input type="date" id="filter-producao-start-date" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 xl:grid-cols-7 gap-4 mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div><label for="filter-producao-start-date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">De</label><input type="date" id="filter-producao-start-date" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
+        <div><label for="filter-producao-end-date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Até</label><input type="date" id="filter-producao-end-date" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
+        <div><label for="filter-producao-lote" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Lote Batelada</label><input type="text" id="filter-producao-lote" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="Buscar lote..."></div>
+        <div><label for="filter-producao-responsavel" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Responsável</label><select id="filter-producao-responsavel" class="producao-filter equipe-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select></div>
+        <div><label for="filter-producao-estufa" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Estufa</label><select id="filter-producao-estufa" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option value="">Todas</option><option value="A">Estufa A</option><option value="B">Estufa B</option><option value="C">Estufa C</option><option value="D">Estufa D</option></select></div>
+        <div><label for="filter-producao-status" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Status</label><select id="filter-producao-status" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option value="">Todos</option><option value="Pré-preparo">Pré-preparo</option><option value="Em Produção">Em Produção</option><option value="Finalizado">Finalizado</option></select></div>
+        <div><label for="filter-producao-turno" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Turno</label><select id="filter-producao-turno" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option value="">Todos</option><option value="Diurno">Diurno</option><option value="Noturno">Noturno</option></select></div>
+        <div class="xl:col-start-6 xl:col-span-2 flex justify-end items-end space-x-4 pt-4 xl:pt-0">
+             <button id="generate-producao-report" class="px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex items-center">
+                <i class="fas fa-file-pdf mr-2"></i>Gerar Relatório
+            </button>
+            <button id="clear-producao-filters" class="px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Limpar Filtros</button>
+        </div>
     </div>
-    <div>
-        <label for="filter-producao-end-date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Até</label>
-        <input type="date" id="filter-producao-end-date" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-    </div>
-    <div>
-        <label for="filter-producao-lote" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Lote</label>
-        <input type="text" id="filter-producao-lote" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="Buscar lote...">
-    </div>
-    <div>
-        <label for="filter-producao-responsavel" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Responsável</label>
-        <select id="filter-producao-responsavel" class="producao-filter equipe-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select>
-    </div>
-    <div>
-        <label for="filter-producao-estufa" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Estufa</label>
-        <select id="filter-producao-estufa" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-            <option value="">Todas</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-        </select>
-    </div>
-    <div>
-        <label for="filter-producao-status" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Status</label>
-        <select id="filter-producao-status" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-            <option value="">Todos</option>
-            <option value="Pré-preparo">Pré-preparo</option>
-            <option value="Em Produção">Em Produção</option>
-            <option value="Finalizado">Finalizado</option>
-        </select>
-    </div>
-    <div>
-        <label for="filter-producao-turno" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Turno</label>
-        <select id="filter-producao-turno" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-            <option value="">Todos</option>
-            <option value="Diurno">Diurno</option>
-            <option value="Noturno">Noturno</option>
-        </select>
-    </div>
-    
-    <!-- Bloco dos botões agora como um item do grid, com alinhamento vertical e horizontal -->
-    <div class="lg:col-span-7 flex justify-end items-end space-x-4">
-        <button id="generate-producao-report" class="px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex items-center">
-            <i class="fas fa-file-pdf mr-2"></i>Gerar Relatório
-        </button>
-        <button id="clear-producao-filters" class="px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Limpar Filtros</button>
-    </div>
-</div>
 
     <!-- Contêiner para a Visualização Kanban -->
     <div id="producao-kanban-container">
@@ -271,8 +233,6 @@
                         <th scope="col" class="px-6 py-3">Status</th>
                         <th scope="col" class="px-6 py-3">Cliente / Produto</th>
                         <th scope="col" class="px-6 py-3">Lote Estoque</th>
-                        <th scope="col" class="px-6 py-3">Lote Batelada</th>
-                        <th scope="col" class="px-6 py-3">Turno</th>                        
                         <th scope="col" class="px-6 py-3">Início Preparo</th>
                         <th scope="col" class="px-6 py-3">Início Produção</th>
                         <th scope="col" class="px-6 py-3">Finalizado</th>
@@ -288,7 +248,6 @@
     </div>
 </div>
 <!-- ======================= FIM DA TELA DE PRODUÇÃO ======================= -->
-
                     <!-- ======================= TELA DE EQUIPE ======================= -->
                     <div id="equipe" class="page hidden">
                         <div id="equipe-list-container">
@@ -621,10 +580,10 @@
                     <label for="liofilizacao-Estufa" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Estufa</label>
                     <select id="liofilizacao-Estufa" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
                         <option value="">Selecione...</option>
-                        <option value="1">Estufa 1</option>
-                        <option value="2">Estufa 2</option>
-                        <option value="3">Estufa 3</option>
-                        <option value="4">Estufa 4</option>
+                        <option value="A">Estufa A</option>
+                        <option value="B">Estufa B</option>
+                        <option value="C">Estufa C</option>
+                        <option value="D">Estufa D</option>
                     </select>
                 </div>
                 <div>

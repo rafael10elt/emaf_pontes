@@ -49,7 +49,7 @@ const charts = {
         estoque: 'Emaf_Estoque',
         producao: 'Emaf_Producao'
     };
-   const TODAS_ESTUFAS = ['1', '2', '3', '4'];
+   const TODAS_ESTUFAS = ['A', 'B', 'C', 'D'];
    const TODOS_CONTAINERS = ['Container 1', 'Container 2', 'In Natura'];
 
     // --- Mapeamento de Nomes de Campos para Rótulos Amigáveis ---
@@ -742,7 +742,7 @@ function updateGargaloWipChart(data) {
 function renderPerformanceRecursosTable(data) {
     const container = document.getElementById('performance-recursos-table');
     const responsaveis = [...new Set(data.map(d => d.Emaf_Equipe?.Nome || 'N/A'))];
-    const estufas = ['1', '2', '3', '4'];
+    const estufas = ['A', 'B', 'C', 'D'];
 
     const pivotData = responsaveis.map(r => {
         const row = { responsavel: r };
@@ -1272,27 +1272,31 @@ function updateMovimentacaoChart(data) {
 // Função que aplica os filtros e decide qual view renderizar
 
 function getFilteredProducaoData() {
+    // 1. Obter os valores de todos os filtros
     const startDate = document.getElementById('filter-producao-start-date').value;
     const endDate = document.getElementById('filter-producao-end-date').value;
+    const clienteId = document.getElementById('filter-producao-cliente').value; // <-- ADICIONADO
     const lote = document.getElementById('filter-producao-lote').value.toLowerCase();
     const responsavelId = document.getElementById('filter-producao-responsavel').value;
     const estufa = document.getElementById('filter-producao-estufa').value;
     const status = document.getElementById('filter-producao-status').value;
-    const turno = document.getElementById('filter-producao-turno').value; 
+    const turno = document.getElementById('filter-producao-turno').value;
 
+    // 2. Filtrar o array de dados principal
     const filteredData = producaoData.filter(item => {
         const itemDate = item.Inicio_Preparo ? item.Inicio_Preparo.slice(0, 10) : null;
 
         const dateMatch = (!startDate || (itemDate && itemDate >= startDate)) && 
                           (!endDate || (itemDate && itemDate <= endDate));
         
-        const loteMatch = !lote || (item.Lote_Batelada || '').toLowerCase().includes(lote); 
+        const clienteMatch = !clienteId || item.Emaf_Clientes?.Id == clienteId; // <-- ADICIONADO
+        const loteMatch = !lote || (item.Lote_Batelada || '').toLowerCase().includes(lote);
         const responsavelMatch = !responsavelId || item.Emaf_Equipe?.Id == responsavelId;
         const estufaMatch = !estufa || item.Estufa == estufa;
         const statusMatch = !status || item.Status === status;
-        const turnoMatch = !turno || item.Turno === turno; 
+        const turnoMatch = !turno || item.Turno === turno;
 
-        return dateMatch && loteMatch && responsavelMatch && estufaMatch && statusMatch && turnoMatch;
+        return dateMatch && clienteMatch && loteMatch && responsavelMatch && estufaMatch && statusMatch && turnoMatch;
     });
     return filteredData;
 }
@@ -1582,7 +1586,6 @@ function renderProducaoList(data) {
         if (priorityA !== priorityB) {
             return priorityA - priorityB;
         }
-
         switch (a.Status) {
             case 'Pré-preparo':
                 return new Date(a.Inicio_Preparo) - new Date(b.Inicio_Preparo);
@@ -1596,7 +1599,7 @@ function renderProducaoList(data) {
     });
 
     if (sortedData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-gray-500">Nenhum registro encontrado para os filtros selecionados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-gray-500">Nenhum registro encontrado.</td></tr>`;
         return;
     }
 
@@ -1617,8 +1620,6 @@ function renderProducaoList(data) {
                     <span class="text-xs text-gray-500">${item.Emaf_Produto?.Produto || 'N/A'}</span>
                 </td>
                 <td class="px-6 py-4">${item.Emaf_Estoque?.Lote || 'N/A'}</td>
-                <td class="px-6 py-4">${item.Lote_Batelada || 'N/A'}</td>
-                <td class="px-6 py-4">${item.Turno || 'N/A'}</td>
                 <td class="px-6 py-4">${formatTimestamp(item.Inicio_Preparo)}</td>
                 <td class="px-6 py-4">${formatTimestamp(item.Inicio_Producao)}</td>
                 <td class="px-6 py-4">${formatTimestamp(item.Finalizado)}</td>
@@ -1797,11 +1798,10 @@ async function handleProducaoSelectChange(event) {
             return;
         }
 
-        // LÓGICA DE CONSULTA CORRIGIDA
         // Monta a query para buscar lotes ativos e recebidos para o cliente
         const whereClause = `(Emaf_Clientes_id,eq,${clienteId})~and(Status_Lote,eq,Ativo)~and(Status,eq,Recebido)`;
         const nestedClause = `nested[Emaf_Produto][fields]=Id,Produto`;
-        const lotesAtivosEndpoint = `Emaf_Estoque?where=${whereClause}&${nestedClause}`;
+        const lotesAtivosEndpoint = `Emaf_Estoque?where=${encodeURIComponent(whereClause)}&${nestedClause}`;
         
         const result = await nocoFetch(lotesAtivosEndpoint);
 
@@ -1834,9 +1834,8 @@ async function handleProducaoSelectChange(event) {
     if (clienteId && produtoId) {
         showLoadingOverlay('Buscando lote ativo...');
 
-        // LÓGICA DE CONSULTA CORRIGIDA
         const whereClause = `(Emaf_Clientes_id,eq,${clienteId})~and(Emaf_Produto_id,eq,${produtoId})~and(Status_Lote,eq,Ativo)~and(Status,eq,Recebido)`;
-        const endpoint = `Emaf_Estoque?where=${whereClause}&limit=1`;
+        const endpoint = `Emaf_Estoque?where=${encodeURIComponent(whereClause)}&limit=1`;
         
         const result = await nocoFetch(endpoint);
 
@@ -2293,6 +2292,7 @@ async function handleFormSubmit(e) {
     }
 }
 // Função do modal de detalhes, atualizada para incluir a 'producaoData'
+// Função do modal de detalhes, atualizada para incluir a 'producaoData'
 function openDetailsModal(element) {
     const id = element.dataset.id;
     const type = element.dataset.type;
@@ -2301,7 +2301,15 @@ function openDetailsModal(element) {
     if (!data) return;
 
     activeDeleteItem = { id, type, element };
-    document.getElementById('details-modal-actions').classList.add('hidden');
+    
+    // Mostra/esconde botões de ação com base na role e no tipo de item
+    const isGestaoOrAdmin = ['Admin', 'Gestão'].includes(loggedInUser.Role);
+    const actionsContainer = document.getElementById('details-modal-actions');
+    if (isGestaoOrAdmin && (type === 'equipe' || type === 'clientes' || type === 'produtos')) {
+        actionsContainer.classList.remove('hidden');
+    } else {
+        actionsContainer.classList.add('hidden');
+    }
     
     document.getElementById('modal-title').textContent = `Detalhes de ${capitalize(type)}`;
     
@@ -2329,9 +2337,9 @@ function openDetailsModal(element) {
              displayValue = formatCNPJ(displayValue);
         }
 
-        if (key.toLowerCase().includes('data') || ['inicio_preparo', 'inicio_producao', 'finalizado'].includes(keyLower)) {
+        if (['data', 'inicio_preparo', 'inicio_producao', 'finalizado'].includes(keyLower)) {
             if (displayValue && displayValue !== 'N/A') {
-                displayValue = new Date(displayValue).toLocaleString('pt-BR');
+                displayValue = formatTimestamp(displayValue);
             }
         }
          if (['quantidade', 'qtde_insumo', 'qtde_final'].includes(keyLower) && (typeof displayValue === 'number')) {
@@ -2343,8 +2351,8 @@ function openDetailsModal(element) {
     
     if (type === 'estoque' || type === 'producao') {
         const order = type === 'estoque'
-            ? ['Data', 'Emaf_Clientes', 'Emaf_Equipe', 'Emaf_Produto', 'Lote', 'Container', 'Quantidade', 'Status', 'Observacao', 'Etiqueta', 'Foto_Produto', 'Foto_Local', 'Foto_Veiculo']
-            : ['Status', 'Emaf_Clientes', 'Emaf_Produto', 'Emaf_Estoque', 'Qtde_Insumo', 'Qtde_Final', 'Inicio_Preparo', 'Inicio_Producao', 'Finalizado', 'Emaf_Equipe', 'Estufa', 'Bandeja', 'Observacao'];
+            ? ['Data', 'Emaf_Clientes', 'Emaf_Equipe', 'Emaf_Produto', 'Lote', 'Container', 'Quantidade', 'Status_Lote', 'Status', 'Observacao', 'Etiqueta', 'Foto_Produto', 'Foto_Local', 'Foto_Veiculo']
+            : ['Status', 'Emaf_Clientes', 'Emaf_Produto', 'Emaf_Estoque', 'Lote_Batelada', 'Turno', 'Qtde_Insumo', 'Qtde_Final', 'Inicio_Preparo', 'Inicio_Producao', 'Finalizado', 'Emaf_Equipe', 'Estufa', 'Bandeja', 'Observacao'];
         
         order.forEach(key => {
             if (data.hasOwnProperty(key)) {
@@ -2594,33 +2602,22 @@ function setupEventListeners() {
         document.getElementById('filter-producao-turno').value = '';
         applyAndRenderProducao();
     });
-    // Listeners para os filtros da tela de Produção
-    document.querySelectorAll('.producao-filter').forEach(filter => {
-        const eventType = (filter.tagName === 'INPUT' && filter.type === 'text') ? 'input' : 'change';
-        filter.addEventListener(eventType, applyAndRenderProducao);
-    });
 
-    document.getElementById('clear-producao-filters')?.addEventListener('click', () => {
-        document.getElementById('filter-producao-start-date').value = '';
-        document.getElementById('filter-producao-end-date').value = '';
-        document.getElementById('filter-producao-lote').value = '';
-        document.getElementById('filter-producao-responsavel').value = '';
-        document.getElementById('filter-producao-estufa').value = '';
-        document.getElementById('filter-producao-status').value = '';
-        applyAndRenderProducao();
-    });
-// Listeners para as abas do Dashboard
+    // Listeners para as abas do Dashboard
     const tabs = document.querySelectorAll('.dashboard-tab');
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
             currentDashboardTab = tab.dataset.tab;
-            tabs.forEach(t => t.classList.remove('text-brand-gold', 'border-brand-gold'));
+            tabs.forEach(t => {
+                t.classList.remove('text-brand-gold', 'border-brand-gold', 'border-transparent', 'hover:text-gray-600', 'hover:border-gray-300');
+                t.classList.add('border-transparent', 'hover:text-gray-600', 'hover:border-gray-300');
+            });
             tab.classList.add('text-brand-gold', 'border-brand-gold');
+            tab.classList.remove('border-transparent');
 
             document.querySelectorAll('.dashboard-tab-content').forEach(content => content.classList.add('hidden'));
             document.getElementById(`dashboard-${currentDashboardTab}-content`).classList.remove('hidden');
             
-            // Força a atualização do dashboard ao trocar de aba
             updateDashboard();
         });
     });
