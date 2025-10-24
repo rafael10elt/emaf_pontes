@@ -1360,7 +1360,7 @@ function createProducaoCard(item) {
     }
     if (item.Inicio_Producao) {
         detailsHTML += `<p><i class="fas fa-industry w-4 text-gray-400"></i> Produção: <span class="font-medium text-gray-800 dark:text-gray-200">${formatTimestamp(item.Inicio_Producao)}</span></p>`;
-        detailsHTML += `<p><i class="fas fa-tag w-4 text-gray-400"></i> Lote Batelada2: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Lote_Batelada || 'N/A'}</span></p>`;
+        detailsHTML += `<p><i class="fas fa-tag w-4 text-gray-400"></i> Lote Batelada: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Lote_Batelada || 'N/A'}</span></p>`;
         detailsHTML += `<p><i class="fas fa-sun w-4 text-gray-400"></i> Turno: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Turno || 'N/A'}</span></p>`;
         detailsHTML += `<p><i class="fas fa-thermometer-half w-4 text-gray-400"></i> Estufa: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Estufa}</span> | Bandejas: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Bandeja}</span></p>`;
     }
@@ -1651,7 +1651,7 @@ function createProducaoCard(item) {
     }
     if (item.Inicio_Producao) {
         detailsHTML += `<p><i class="fas fa-industry w-4 text-gray-400"></i> Produção: <span class="font-medium text-gray-800 dark:text-gray-200">${formatTimestamp(item.Inicio_Producao)}</span></p>`;
-        detailsHTML += `<p><i class="fas fa-tag w-4 text-gray-400"></i> Lote Batelada3: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Lote_Batelada || 'N/A'}</span></p>`;
+        detailsHTML += `<p><i class="fas fa-tag w-4 text-gray-400"></i> Lote Batelada: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Lote_Batelada || 'N/A'}</span></p>`;
         detailsHTML += `<p><i class="fas fa-sun w-4 text-gray-400"></i> Turno: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Turno || 'N/A'}</span></p>`;
         detailsHTML += `<p><i class="fas fa-thermometer-half w-4 text-gray-400"></i> Estufa: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Estufa}</span> | Bandejas: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Bandeja}</span></p>`;
     }
@@ -1722,7 +1722,7 @@ function renderProducaoList(data) {
             <th scope="col" class="px-6 py-3">Status</th>
             <th scope="col" class="px-6 py-3">Cliente / Produto</th>
             <th scope="col" class="px-6 py-3">Lote Estoque</th>
-            <th scope="col" class="px-6 py-3">Lote Batelada4</th>
+            <th scope="col" class="px-6 py-3">Lote Batelada</th>
             <th scope="col" class="px-6 py-3">Início Preparo</th>
             <th scope="col" class="px-6 py-3">Início Produção</th>
             <th scope="col" class="px-6 py-3">Finalizado</th>
@@ -2150,109 +2150,6 @@ async function handleLiofilizacaoFormSubmit(e) {
     }
     
     hideLoadingOverlay();
-}
-
-function renderProducaoList(data) {
-    const tbody = document.getElementById('producao-table-body');
-    if (!tbody) return;
-    tbody.innerHTML = ''; // Limpa o corpo da tabela
-
-    // Função auxiliar para classes de status
-    const getStatusClass = (status) => {
-        switch (status) {
-            case 'Pré-preparo': return 'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-100';
-            case 'Em Produção': return 'bg-yellow-200 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100';
-            case 'Finalizado': return 'bg-green-200 text-green-800 dark:bg-green-700 dark:text-green-100';
-            default: return 'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-100';
-        }
-    };
-
-    // Prioridade para ordenação
-    const statusPriority = {
-        'Pré-preparo': 1,
-        'Em Produção': 2,
-        'Finalizado': 3
-    };
-
-    // Ordena os dados: Primeiro por status (prioridade), depois por data relevante
-    const sortedData = [...data].sort((a, b) => {
-        const priorityA = statusPriority[a.Status] || 99;
-        const priorityB = statusPriority[b.Status] || 99;
-        if (priorityA !== priorityB) {
-            return priorityA - priorityB; // Ordena por status primeiro
-        }
-
-        // Se o status for o mesmo, ordena por data (mais antigo primeiro, exceto finalizado)
-        switch (a.Status) {
-            case 'Pré-preparo':
-                // Ordena por Inicio_Preparo (mais antigo primeiro)
-                return (a.Inicio_Preparo && b.Inicio_Preparo) ? new Date(a.Inicio_Preparo) - new Date(b.Inicio_Preparo) : 0;
-            case 'Em Produção':
-                // Ordena por Inicio_Producao (mais antigo primeiro)
-                return (a.Inicio_Producao && b.Inicio_Producao) ? new Date(a.Inicio_Producao) - new Date(b.Inicio_Producao) : 0;
-            case 'Finalizado':
-                // Ordena por Finalizado (mais recente primeiro)
-                return (a.Finalizado && b.Finalizado) ? new Date(b.Finalizado) - new Date(a.Finalizado) : 0;
-            default:
-                return 0; // Mantém a ordem se não houver datas ou status desconhecido
-        }
-    });
-
-    // Atualiza o cabeçalho da tabela (garante que está correto)
-    const thead = document.querySelector('#producao-list-container thead tr');
-    if (thead) {
-        thead.innerHTML = `
-            <th scope="col" class="px-6 py-3">Status</th>
-            <th scope="col" class="px-6 py-3">Cliente / Produto</th>
-            <th scope="col" class="px-6 py-3">Lote Estoque</th>
-            <th scope="col" class="px-6 py-3">Lote Batelada1</th>
-            <th scope="col" class="px-6 py-3">Turno</th>
-            <th scope="col" class="px-6 py-3">Início Preparo</th>
-            <th scope="col" class="px-6 py-3">Início Produção</th>
-            <th scope="col" class="px-6 py-3">Finalizado</th>
-            <th scope="col" class="px-6 py-3">Responsável</th>
-            <th scope="col" class="px-6 py-3">Ações</th>
-        `;
-    }
-
-    // Verifica se há dados filtrados
-    if (sortedData.length === 0) {
-        // Ajusta o colspan para o número correto de colunas (10)
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-gray-500 dark:text-gray-400">Nenhum registro encontrado para os filtros selecionados.</td></tr>`;
-        return;
-    }
-
-    // Itera sobre os dados ordenados e cria as linhas da tabela
-    sortedData.forEach(item => {
-        // Define os botões de ação com base no status
-        let actionsHTML = `<button class="action-btn text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white" data-action="details" data-type="producao" title="Ver Detalhes"><i class="fas fa-eye"></i></button>`;
-        // Permite editar/excluir apenas se estiver em Pré-preparo
-        if (item.Status === 'Pré-preparo' && ['Admin', 'Gestão'].includes(loggedInUser.Role)) {
-            actionsHTML += `
-                <button class="action-btn-producao-crud text-blue-500 hover:text-blue-700" data-action="edit" data-id="${item.Id}" title="Editar"><i class="fas fa-edit"></i></button>
-                <button class="action-btn-producao-crud text-red-500 hover:text-red-700" data-action="delete" data-id="${item.Id}" title="Apagar"><i class="fas fa-trash"></i></button>
-            `;
-        }
-
-        // Constrói a linha da tabela (<tr>) com as células (<td>) na ordem CORRETA
-        tbody.innerHTML += `
-            <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600" data-id="${item.Id}" data-type="producao">
-                <td class="px-6 py-4 whitespace-nowrap"><span class="text-xs font-semibold px-2 py-0.5 rounded-full ${getStatusClass(item.Status)}">${item.Status || 'N/A'}</span></td>
-                <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">
-                    ${item.Emaf_Clientes?.Cliente || 'N/A'}<br>
-                    <span class="text-xs text-gray-500 dark:text-gray-400">${item.Emaf_Produto?.Produto || 'N/A'}</span>
-                </td>
-                <td class="px-6 py-4">${item.Emaf_Estoque?.Lote || 'N/A'}</td>
-                <td class="px-6 py-4">${item.Lote_Batelada || 'N/A'}</td>
-                <td class="px-6 py-4">${item.Turno || 'N/A'}</td>
-                <td class="px-6 py-4">${formatTimestamp(item.Inicio_Preparo)}</td>
-                <td class="px-6 py-4">${formatTimestamp(item.Inicio_Producao)}</td>
-                <td class="px-6 py-4">${formatTimestamp(item.Finalizado)}</td>
-                <td class="px-6 py-4">${item.Emaf_Equipe?.Nome || 'N/A'}</td>
-                <td class="px-6 py-4 space-x-2 whitespace-nowrap">${actionsHTML}</td>
-            </tr>
-        `;
-    });
 }
 
 async function setupProducaoFormForEdit(item) {
