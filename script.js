@@ -1018,41 +1018,69 @@ async function fetchAllData() {
         }
     }
     
-   async function initializeUserSession(user) {
-        loggedInUser = user;
-        document.getElementById('logged-user-name').textContent = loggedInUser.Nome;
-        document.getElementById('logged-user-role').textContent = loggedInUser.Role;
+async function initializeUserSession(user) {
+    loggedInUser = user;
+    const userRole = loggedInUser.Role;
 
-        const userAvatar = document.querySelector('#main-app header img');
-        if (userAvatar && loggedInUser.Foto && loggedInUser.Foto.length > 0 && loggedInUser.Foto[0]?.signedPath) {
-            userAvatar.src = `${NOCODB_HOST_URL}/${loggedInUser.Foto[0].signedPath}`;
-        } else {
-            userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(loggedInUser.Nome)}&background=BFA16A&color=fff`;
-        }
+    // --- 1. Preenche informações do usuário no header ---
+    document.getElementById('logged-user-name').textContent = loggedInUser.Nome;
+    document.getElementById('logged-user-role').textContent = userRole;
 
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('main-app').classList.remove('hidden');
-
-        // Mostra todas as abas por padrão, a lógica de permissão irá esconder o que for necessário
-        document.querySelectorAll('.nav-link').forEach(link => link.style.display = 'flex');
-
-        const isProd = loggedInUser.Role === 'Produção';
-        if (isProd) {
-            document.querySelector('.nav-link[data-target="equipe"]').style.display = 'none';
-            document.querySelector('.nav-link[data-target="clientes"]').style.display = 'none';
-            document.querySelector('.nav-link[data-target="produtos"]').style.display = 'none';
-        }
-        
-        const isGestaoOrAdmin = ['Admin', 'Gestão'].includes(loggedInUser.Role);
-        document.querySelectorAll('#show-equipe-form, #show-clientes-form, #show-produtos-form').forEach(btn => {
-            btn.style.display = isGestaoOrAdmin ? 'block' : 'none';
-        });
-        document.getElementById('show-estoque-form').style.display = 'block';
-
-        await fetchAllData();
-        // Define o Dashboard como a página inicial padrão após o login
-        navigateTo(sessionStorage.getItem('currentPage') || 'dashboard');
+    const userAvatar = document.querySelector('#main-app header img');
+    if (userAvatar && loggedInUser.Foto && loggedInUser.Foto.length > 0 && loggedInUser.Foto[0]?.signedPath) {
+        userAvatar.src = `${NOCODB_HOST_URL}/${loggedInUser.Foto[0].signedPath}`;
+    } else {
+        userAvatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(loggedInUser.Nome)}&background=BFA16A&color=fff`;
     }
+
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('main-app').classList.remove('hidden');
+
+    // --- 2. Lógica de Permissões (Início) ---
+    // Reseta a visibilidade para o padrão (tudo visível) antes de aplicar as restrições.
+    document.querySelectorAll('.nav-link').forEach(link => link.style.display = 'flex');
+    document.getElementById('show-equipe-form').style.display = 'block';
+    document.getElementById('show-clientes-form').style.display = 'block';
+    document.getElementById('show-produtos-form').style.display = 'block';
+    document.getElementById('show-estoque-form').style.display = 'block';
+    document.getElementById('show-producao-form').style.display = 'block';
+    document.getElementById('toggle-list-view').style.display = 'block';
+    document.getElementById('toggle-kanban-view').style.display = 'block';
+    document.getElementById('generate-producao-report').style.display = 'block';
+
+    // Aplica as restrições com base no perfil
+    if (userRole === 'Gestão') {
+        // Gestor não vê a aba de Equipe
+        document.querySelector('.nav-link[data-target="equipe"]').style.display = 'none';
+        document.getElementById('show-equipe-form').style.display = 'none';
+    } 
+    else if (userRole === 'Produção') {
+        // Produção tem acesso restrito
+        document.querySelector('.nav-link[data-target="equipe"]').style.display = 'none';
+        document.querySelector('.nav-link[data-target="clientes"]').style.display = 'none';
+        document.querySelector('.nav-link[data-target="produtos"]').style.display = 'none';
+
+        // Esconde botões de criação que não são de sua responsabilidade
+        document.getElementById('show-equipe-form').style.display = 'none';
+        document.getElementById('show-clientes-form').style.display = 'none';
+        document.getElementById('show-produtos-form').style.display = 'none';
+        
+        // Na tela de Produção, esconde o botão de gerar relatório e os de alternar visão
+        document.getElementById('toggle-list-view').style.display = 'none';
+        document.getElementById('toggle-kanban-view').style.display = 'none';
+        document.getElementById('generate-producao-report').style.display = 'none';
+        
+        // Força a visualização para Kanban e esconde a lista
+        currentProducaoView = 'kanban';
+        document.getElementById('producao-kanban-container').classList.remove('hidden');
+        document.getElementById('producao-list-container').classList.add('hidden');
+    }
+    // Para 'Admin', nada é escondido.
+
+    // --- 3. Carrega dados e navega para a página inicial ---
+    await fetchAllData();
+    navigateTo(sessionStorage.getItem('currentPage') || 'dashboard');
+}
 
     async function checkSession() {
         const userString = sessionStorage.getItem('loggedInUser');
@@ -1227,64 +1255,151 @@ async function fetchAllData() {
             </div>`;
     }
 
-    function renderEstoque(data) {
-        const tbody = document.getElementById('estoque-table-body');
-        const cardsContainer = document.getElementById('estoque-cards-container');
-        tbody.innerHTML = '';
-        cardsContainer.innerHTML = '';
-        const getStatusClass = (status) => status === 'Recebido' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800';
+function renderEstoque(data) {
+    const tbody = document.getElementById('estoque-table-body');
+    const cardsContainer = document.getElementById('estoque-cards-container');
+    tbody.innerHTML = '';
+    cardsContainer.innerHTML = '';
+    const getStatusClass = (status) => status === 'Recebido' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800';
+    
+    const formatQuantity = (qty) => {
+        if (qty === null || typeof qty === 'undefined') return '0,00';
+        return Number(qty).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 5 });
+    };
+
+    // Apenas o Admin pode editar e apagar no Estoque
+    const canManageEstoque = loggedInUser.Role === 'Admin';
+
+    data.forEach(item => {
+        const statusClass = getStatusClass(item.Status);
+        const dataFormatada = item.Data ? new Date(item.Data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short'}) : 'N/A';
         
-        const formatQuantity = (qty) => {
-            if (qty === null || typeof qty === 'undefined') return '0,00';
-            return Number(qty).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 5 });
-        };
+        // Constrói os botões de ação com base na permissão
+        const actionsHTML = `
+            <button class="action-btn text-gray-500" data-action="details" title="Ver Detalhes"><i class="fas fa-eye"></i></button>
+            ${canManageEstoque ? `
+            <button class="action-btn text-blue-500" data-action="edit" title="Editar"><i class="fas fa-edit"></i></button>
+            <button class="action-btn text-red-500" data-action="delete" title="Apagar"><i class="fas fa-trash"></i></button>
+            ` : ''}
+        `;
+        
+        // Tabela
+        tbody.innerHTML += `
+            <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700" data-id="${item.Id}" data-type="estoque">
+                <td class="px-6 py-4">${dataFormatada}</td>
+                <td class="px-6 py-4">${item.Emaf_Clientes?.Cliente || 'N/A'}</td>
+                <td class="px-6 py-4">${item.Emaf_Equipe?.Nome || 'N/A'}</td>
+                <td class="px-6 py-4">${item.Emaf_Produto?.Produto || 'N/A'}</td>
+                <td class="px-6 py-4">${item.Lote || 'N/A'}</td>
+                <td class="px-6 py-4">${item.Container || 'N/A'}</td>
+                <td class="px-6 py-4">${formatQuantity(item.Quantidade)}</td>
+                <td class="px-6 py-4"><span class="text-xs font-semibold px-2 py-0.5 rounded-full ${statusClass}">${item.Status}</span></td>
+                <td class="px-6 py-4 space-x-2">${actionsHTML}</td>
+            </tr>`;
 
-        data.forEach(item => {
-            const statusClass = getStatusClass(item.Status);
-            const dataFormatada = item.Data ? new Date(item.Data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short'}) : 'N/A';
-            const isGestaoOrAdmin = ['Admin', 'Gestão'].includes(loggedInUser.Role);
-            const actionsHTML = `
-                <button class="action-btn text-gray-500" data-action="details" title="Ver Detalhes"><i class="fas fa-eye"></i></button>
-                ${isGestaoOrAdmin ? `
-                <button class="action-btn text-blue-500" data-action="edit" title="Editar"><i class="fas fa-edit"></i></button>
-                <button class="action-btn text-red-500" data-action="delete" title="Apagar"><i class="fas fa-trash"></i></button>
-                ` : ''}
-            `;
-            
-            // Tabela com nova ordem de colunas
-            tbody.innerHTML += `
-                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700" data-id="${item.Id}" data-type="estoque">
-                    <td class="px-6 py-4">${dataFormatada}</td>
-                    <td class="px-6 py-4">${item.Emaf_Clientes?.Cliente || 'N/A'}</td>
-                    <td class="px-6 py-4">${item.Emaf_Equipe?.Nome || 'N/A'}</td>
-                    <td class="px-6 py-4">${item.Emaf_Produto?.Produto || 'N/A'}</td>
-                    <td class="px-6 py-4">${item.Lote || 'N/A'}</td>
-                    <td class="px-6 py-4">${item.Container || 'N/A'}</td>
-                    <td class="px-6 py-4">${formatQuantity(item.Quantidade)}</td>
-                    <td class="px-6 py-4"><span class="text-xs font-semibold px-2 py-0.5 rounded-full ${statusClass}">${item.Status}</span></td>
-                    <td class="px-6 py-4 space-x-2">${actionsHTML}</td>
-                </tr>`;
+        // Cards
+        cardsContainer.innerHTML += `
+            <div class="p-4 bg-white rounded-lg shadow dark:bg-gray-800 border dark:border-gray-700" data-id="${item.Id}" data-type="estoque">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-lg font-semibold text-gray-900 dark:text-white">${item.Emaf_Produto?.Produto || 'N/A'}</p>
+                        <p class="text-xs text-gray-500">${dataFormatada}</p>
+                    </div>
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${statusClass}">${item.Status}</span>
+                </div>
+                <div class="mt-2 text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                    <p><strong>Cliente:</strong> ${item.Emaf_Clientes?.Cliente || 'N/A'}</p>
+                    <p><strong>Responsável:</strong> ${item.Emaf_Equipe?.Nome || 'N/A'}</p>
+                    <p><strong>Lote:</strong> ${item.Lote || 'N/A'} | <strong>Container:</strong> ${item.Container || 'N/A'}</p>
+                    <p><strong>Quantidade:</strong> ${formatQuantity(item.Quantidade)} Kg</p>
+                </div>
+                <div class="flex justify-end pt-2 mt-2 border-t dark:border-gray-600 space-x-2">${actionsHTML}</div>
+            </div>`;
+    });
+}```
 
-            // Cards com nova ordem de informações
-            cardsContainer.innerHTML += `
-                <div class="p-4 bg-white rounded-lg shadow dark:bg-gray-800 border dark:border-gray-700" data-id="${item.Id}" data-type="estoque">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="text-lg font-semibold text-gray-900 dark:text-white">${item.Emaf_Produto?.Produto || 'N/A'}</p>
-                            <p class="text-xs text-gray-500">${dataFormatada}</p>
-                        </div>
-                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${statusClass}">${item.Status}</span>
-                    </div>
-                    <div class="mt-2 text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                        <p><strong>Cliente:</strong> ${item.Emaf_Clientes?.Cliente || 'N/A'}</p>
-                        <p><strong>Responsável:</strong> ${item.Emaf_Equipe?.Nome || 'N/A'}</p>
-                        <p><strong>Lote:</strong> ${item.Lote || 'N/A'} | <strong>Container:</strong> ${item.Container || 'N/A'}</p>
-                        <p><strong>Quantidade:</strong> ${formatQuantity(item.Quantidade)} Kg</p>
-                    </div>
-                    <div class="flex justify-end pt-2 mt-2 border-t dark:border-gray-600 space-x-2">${actionsHTML}</div>
-                </div>`;
-        });
+#### 3. Função `createProducaoCard` (Visão Kanban da Produção)
+
+Aqui, `Admin` e `Gestor` têm permissão para editar/apagar, mas apenas no estágio "Pré-preparo". O usuário de `Produção` não pode.
+
+**Substitua a sua função `createProducaoCard` atual por esta:**
+
+```javascript
+function createProducaoCard(item) {
+    const formatQuantity = (qty) => Number(qty || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    let actionButtonHTML = '';
+    let crudButtonsHTML = '';
+    let detailsHTML = ''; // Variável para os detalhes incrementais
+
+    // NOVO: Define se o usuário pode gerenciar (editar/apagar)
+    const canManageProducao = ['Admin', 'Gestão'].includes(loggedInUser.Role);
+
+    // --- Lógica dos Botões de Ação (Avançar Etapa) ---
+    if (item.Status === 'Pré-preparo') {
+        actionButtonHTML = `<button class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition-colors action-btn-producao" data-action="start-liofilizacao" data-id="${item.Id}">
+                                <i class="fas fa-industry mr-2"></i>Iniciar Produção
+                            </button>`;
+    } else if (item.Status === 'Em Produção') { 
+        actionButtonHTML = `<button class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition-colors action-btn-producao" data-action="finish-producao" data-id="${item.Id}">
+                                <i class="fas fa-check-circle mr-2"></i>Finalizar Produção
+                            </button>`;
+    } else if (item.Status === 'Finalizado' && (!item.Qtde_Final || item.Qtde_Final <= 0)) {
+        actionButtonHTML = `<button class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors action-btn-producao" data-action="add-qtd-final" data-id="${item.Id}">
+                                <i class="fas fa-balance-scale-right mr-2"></i>Informar Qtd. Final
+                            </button>`;
     }
+
+    // --- Lógica dos Botões CRUD (Editar/Apagar) com base na permissão ---
+    if (canManageProducao && item.Status === 'Pré-preparo') {
+        crudButtonsHTML = `
+            <button class="action-btn-producao-crud text-blue-500 hover:text-blue-700" data-action="edit" data-id="${item.Id}" title="Editar"><i class="fas fa-edit"></i></button>
+            <button class="action-btn-producao-crud text-red-500 hover:text-red-700" data-action="delete" data-id="${item.Id}" title="Apagar"><i class="fas fa-trash"></i></button>
+        `;
+    }
+
+    // --- Lógica Incremental dos Detalhes (sem alterações) ---
+    if (item.Inicio_Preparo) {
+        detailsHTML += `<p><i class="far fa-clock w-4 text-gray-400"></i> Preparo: <span class="font-medium text-gray-800 dark:text-gray-200">${formatTimestamp(item.Inicio_Preparo)}</span></p>`;
+    }
+    if (item.Inicio_Producao) {
+        detailsHTML += `<p><i class="fas fa-industry w-4 text-gray-400"></i> Produção: <span class="font-medium text-gray-800 dark:text-gray-200">${formatTimestamp(item.Inicio_Producao)}</span></p>`;
+        detailsHTML += `<p><i class="fas fa-tag w-4 text-gray-400"></i> Lote Batelada: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Lote_Batelada || 'N/A'}</span></p>`;
+        detailsHTML += `<p><i class="fas fa-sun w-4 text-gray-400"></i> Turno: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Turno || 'N/A'}</span></p>`;
+        detailsHTML += `<p><i class="fas fa-thermometer-half w-4 text-gray-400"></i> Estufa: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Estufa}</span> | Bandejas: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Bandeja}</span></p>`;
+    }
+    if (item.Finalizado) {
+        detailsHTML += `<p><i class="far fa-check-circle w-4 text-gray-400"></i> Finalizado: <span class="font-medium text-gray-800 dark:text-gray-200">${formatTimestamp(item.Finalizado)}</span></p>`;
+        detailsHTML += `<p><i class="fas fa-hourglass-half w-4 text-gray-400"></i> Duração Total: <span class="font-bold text-blue-500">${calculateDuration(item.Inicio_Preparo, item.Finalizado)}</span></p>`;
+        
+        if (item.Qtde_Final > 0) {
+             detailsHTML += `<p><i class="fas fa-balance-scale-right w-4 text-gray-400"></i> Qtd. Final: <span class="font-bold text-green-600 dark:text-green-400">${formatQuantity(item.Qtde_Final)} Kg</span></p>`;
+        } else {
+             detailsHTML += `<p class="text-yellow-600 dark:text-yellow-400 font-semibold mt-2"><i class="fas fa-exclamation-triangle w-4"></i> Pendente: Informar Quantidade Final</p>`;
+        }
+    }
+
+    // --- Template Final do Card ---
+    return `
+        <div class="bg-white dark:bg-gray-700 rounded-lg shadow-md p-4 border-l-4 border-brand-gold" data-id="${item.Id}">
+            <div class="flex justify-between items-start mb-2">
+                <h4 class="font-bold text-gray-900 dark:text-white pr-2">${item.Emaf_Clientes?.Cliente || 'N/A'}</h4>
+                <div class="flex items-center space-x-2 flex-shrink-0">
+                    <span class="text-xs text-gray-500 dark:text-gray-400">#${String(item.Id).padStart(4, '0')}</span>
+                    ${crudButtonsHTML}
+                </div>
+            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">${item.Emaf_Produto?.Produto || 'N/A'}</p>
+            <div class="text-xs text-gray-500 dark:text-gray-400 space-y-1 mb-3">
+                <p><i class="fas fa-box w-4"></i> Lote do Estoque: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Emaf_Estoque?.Lote || 'N/A'}</span></p>
+                <p><i class="fas fa-weight-hanging w-4"></i> Insumo: <span class="font-medium text-gray-800 dark:text-gray-200">${formatQuantity(item.Qtde_Insumo)} Kg</span></p>
+                <p><i class="fas fa-user w-4"></i> Responsável: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Emaf_Equipe?.Nome || 'N/A'}</span></p>
+            </div>
+            ${detailsHTML ? `<div class="text-xs text-gray-500 dark:text-gray-400 space-y-1 py-3 border-t border-b border-gray-200 dark:border-gray-600 my-3">${detailsHTML}</div>` : ''}
+            ${actionButtonHTML ? `<div class="pt-2">${actionButtonHTML}</div>` : ''}
+        </div>
+    `;
+}
 
 // Função que aplica os filtros e decide qual view renderizar
 
@@ -1580,9 +1695,8 @@ function createProducaoCard(item) {
 function renderProducaoList(data) {
     const tbody = document.getElementById('producao-table-body');
     if (!tbody) return;
-    tbody.innerHTML = ''; // Limpa o corpo da tabela
+    tbody.innerHTML = '';
 
-    // Função auxiliar para classes de status
     const getStatusClass = (status) => {
         switch (status) {
             case 'Pré-preparo': return 'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-100';
@@ -1592,38 +1706,20 @@ function renderProducaoList(data) {
         }
     };
 
-    // Prioridade para ordenação
-    const statusPriority = {
-        'Pré-preparo': 1,
-        'Em Produção': 2,
-        'Finalizado': 3
-    };
+    const statusPriority = { 'Pré-preparo': 1, 'Em Produção': 2, 'Finalizado': 3 };
 
-    // Ordena os dados: Primeiro por status (prioridade), depois por data relevante
     const sortedData = [...data].sort((a, b) => {
         const priorityA = statusPriority[a.Status] || 99;
         const priorityB = statusPriority[b.Status] || 99;
-        if (priorityA !== priorityB) {
-            return priorityA - priorityB; // Ordena por status primeiro
-        }
-
-        // Se o status for o mesmo, ordena por data (mais antigo primeiro, exceto finalizado)
+        if (priorityA !== priorityB) return priorityA - priorityB;
         switch (a.Status) {
-            case 'Pré-preparo':
-                // Ordena por Inicio_Preparo (mais antigo primeiro)
-                return (a.Inicio_Preparo && b.Inicio_Preparo) ? new Date(a.Inicio_Preparo) - new Date(b.Inicio_Preparo) : 0;
-            case 'Em Produção':
-                // Ordena por Inicio_Producao (mais antigo primeiro)
-                return (a.Inicio_Producao && b.Inicio_Producao) ? new Date(a.Inicio_Producao) - new Date(b.Inicio_Producao) : 0;
-            case 'Finalizado':
-                // Ordena por Finalizado (mais recente primeiro)
-                return (a.Finalizado && b.Finalizado) ? new Date(b.Finalizado) - new Date(a.Finalizado) : 0;
-            default:
-                return 0; // Mantém a ordem se não houver datas ou status desconhecido
+            case 'Pré-preparo': return (a.Inicio_Preparo && b.Inicio_Preparo) ? new Date(a.Inicio_Preparo) - new Date(b.Inicio_Preparo) : 0;
+            case 'Em Produção': return (a.Inicio_Producao && b.Inicio_Producao) ? new Date(a.Inicio_Producao) - new Date(b.Inicio_Producao) : 0;
+            case 'Finalizado': return (a.Finalizado && b.Finalizado) ? new Date(b.Finalizado) - new Date(a.Finalizado) : 0;
+            default: return 0;
         }
     });
 
-    // --- MODIFICAÇÃO 1: Atualiza o cabeçalho ---
     const thead = document.querySelector('#producao-list-container thead tr');
     if (thead) {
         thead.innerHTML = `
@@ -1639,26 +1735,25 @@ function renderProducaoList(data) {
         `;
     }
 
-    // Verifica se há dados filtrados
     if (sortedData.length === 0) {
-        // --- MODIFICAÇÃO 3: Ajusta o colspan ---
-        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-gray-500 dark:text-gray-400">Nenhum registro encontrado para os filtros selecionados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-gray-500 dark:text-gray-400">Nenhum registro encontrado.</td></tr>`;
         return;
     }
 
-    // Itera sobre os dados ordenados e cria as linhas da tabela
+    // NOVO: Define se o usuário pode gerenciar (editar/apagar)
+    const canManageProducao = ['Admin', 'Gestão'].includes(loggedInUser.Role);
+
     sortedData.forEach(item => {
-        // Define os botões de ação com base no status
-        let actionsHTML = `<button class="action-btn text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white" data-action="details" data-type="producao" title="Ver Detalhes"><i class="fas fa-eye"></i></button>`;
-        // Permite editar/excluir apenas se estiver em Pré-preparo
-        if (item.Status === 'Pré-preparo' && ['Admin', 'Gestão'].includes(loggedInUser.Role)) {
+        let actionsHTML = `<button class="action-btn text-gray-500" data-action="details" data-type="producao" title="Ver Detalhes"><i class="fas fa-eye"></i></button>`;
+        
+        // Permite editar/excluir apenas se estiver em Pré-preparo e tiver a permissão
+        if (item.Status === 'Pré-preparo' && canManageProducao) {
             actionsHTML += `
-                <button class="action-btn-producao-crud text-blue-500 hover:text-blue-700" data-action="edit" data-id="${item.Id}" title="Editar"><i class="fas fa-edit"></i></button>
-                <button class="action-btn-producao-crud text-red-500 hover:text-red-700" data-action="delete" data-id="${item.Id}" title="Apagar"><i class="fas fa-trash"></i></button>
+                <button class="action-btn-producao-crud text-blue-500" data-action="edit" data-id="${item.Id}" title="Editar"><i class="fas fa-edit"></i></button>
+                <button class="action-btn-producao-crud text-red-500" data-action="delete" data-id="${item.Id}" title="Apagar"><i class="fas fa-trash"></i></button>
             `;
         }
 
-        // --- MODIFICAÇÃO 2: Constrói a linha da tabela (<tr>) com as células (<td>
         tbody.innerHTML += `
             <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600" data-id="${item.Id}" data-type="producao">
                 <td class="px-6 py-4 whitespace-nowrap"><span class="text-xs font-semibold px-2 py-0.5 rounded-full ${getStatusClass(item.Status)}">${item.Status || 'N/A'}</span></td>
