@@ -93,6 +93,36 @@ const charts = {
     };
 
     // --- Funções de API e Utilitários ---
+    async function refreshCurrentView() {
+    showLoadingOverlay('Atualizando dados...');
+    await fetchAllData(); // Primeiro, busca os dados mais recentes do servidor.
+    
+    // Pega o ID da página que está visível no momento.
+    const currentPageId = sessionStorage.getItem('currentPage');
+
+    // Com base na página atual, chama a função de renderização correspondente.
+    switch (currentPageId) {
+        case 'dashboard':
+            updateDashboard();
+            break;
+        case 'estoque':
+            applyAndRenderEstoque();
+            break;
+        case 'producao':
+            applyAndRenderProducao();
+            break;
+        case 'equipe':
+            applyAndRenderEquipe();
+            break;
+        case 'clientes':
+            applyAndRenderClientes();
+            break;
+        case 'produtos':
+            applyAndRenderProdutos();
+            break;
+    }
+    hideLoadingOverlay();
+}
     function showModal(modalElement) {
         modalElement?.classList.replace('hidden', 'flex');
     }
@@ -1809,8 +1839,7 @@ async function handleQtdFinalFormSubmit(e) {
     
     if (result) {
         hideModal(document.getElementById('qtd-final-modal'));
-        await fetchAllData();
-        applyAndRenderProducao();
+        await refreshCurrentView(); // Atualiza os dados e redesenha a tela
     }
     
     hideLoadingOverlay();
@@ -2006,72 +2035,7 @@ async function handleProducaoSelectChange(event) {
         hideLoadingOverlay();
     }
 }
-async function handleProducaoFormSubmit(e) {
-    e.preventDefault();
 
-    const form = e.target;
-    const id = form.querySelector('#producao-Id').value;
-    const method = id ? 'PATCH' : 'POST';
-
-    // Validação do Lote
-    if (!activeLoteProducao && !id) { // Só valida no modo de criação
-        alert("Erro: Nenhum lote de origem válido foi selecionado. Por favor, verifique o cliente e o produto.");
-        return;
-    }
-
-    const qtdeInsumoInput = form.querySelector('#producao-Qtde_Insumo');
-    const qtdeInsumoValue = qtdeInsumoInput.value.replace(/\./g, '').replace(',', '.');
-    const qtdeInsumo = parseFloat(qtdeInsumoValue);
-
-    if (isNaN(qtdeInsumo) || qtdeInsumo <= 0) {
-        alert("Por favor, insira uma quantidade de insumo válida.");
-        return;
-    }
-    
-    // Para edição, o saldo disponível é o saldo atual + o que este próprio item já consumiu
-    const saldoDisponivel = id ? (activeLoteProducao.saldo + activeProducaoItem.Qtde_Insumo) : activeLoteProducao.saldo;
-    
-    if (qtdeInsumo > saldoDisponivel) {
-        alert(`Erro: A quantidade a utilizar (${qtdeInsumo.toLocaleString('pt-BR')} Kg) é maior que o saldo disponível no lote (${saldoDisponivel.toLocaleString('pt-BR')} Kg).`);
-        return;
-    }
-
-    showLoadingOverlay(id ? 'Atualizando...' : 'Criando...');
-    
-    const body = {
-        Emaf_Clientes_id: parseInt(form.querySelector('#producao-Cliente').value),
-        Emaf_Produto_id: parseInt(form.querySelector('#producao-Produto').value),
-        Emaf_Equipe_id: parseInt(form.querySelector('#producao-Equipe').value),
-        Emaf_Estoque_id: activeLoteProducao.Id,
-        Qtde_Insumo: qtdeInsumo,
-        Observacao: form.querySelector('#producao-Observacao').value,
-    };
-    
-    // Adiciona campos apenas na criação
-    if (!id) {
-        body.Status = 'Pré-preparo';
-        body.Inicio_Preparo = new Date().toISOString();
-    }
-
-    const endpoint = id ? `${TABLE_NAME_MAP.producao}/${id}` : TABLE_NAME_MAP.producao;
-
-    const result = await nocoFetch(endpoint, { 
-        method: method, 
-        body: JSON.stringify(body) 
-    });
-
-    if (result) {
-        hideModal(document.getElementById('producao-modal'));
-        await checkAndFinalizeLote(activeLoteProducao.Id);
-        await fetchAllData();
-        
-
-        // Esta linha força a atualização da tela de produção (Kanban ou Lista)
-        applyAndRenderProducao(); 
-    }
-    
-    hideLoadingOverlay();
-}
 
 async function checkAndFinalizeLote(loteId) {
     const lote = estoqueData.find(e => e.Id === loteId);
@@ -2105,29 +2069,20 @@ async function handleLiofilizacaoFormSubmit(e) {
     
     showLoadingOverlay('Iniciando Produção...');
     
-    // --- LÓGICA DE PREENCHIMENTO AUTOMÁTICO CORRIGIDA ---
-    const inicioProducaoDate = new Date(); // Data e hora do clique no botão
-
-    // A data de referência para o TURNO é o 'Inicio_Preparo'
+    const inicioProducaoDate = new Date(); 
     const preparoDate = new Date(activeProducaoItem.Inicio_Preparo);
     const hour = preparoDate.getHours();
-    const minutes = preparoDate.getMinutes();
 
-    let turno; // Não precisa mais de valor inicial
-// Lógica para turno Noturno (18:00 de um dia até 04:59 do dia seguinte)
-if (hour >= 18 || hour < 5) { // Simplificado: tudo entre 18h e 04:59 é noturno
-    turno = 'Noturno';
-} 
-// Todo o resto é considerado Diurno
-else {
-    turno = 'Diurno';
-}
+    let turno; 
+    if (hour >= 18 || hour < 5) {
+        turno = 'Noturno';
+    } else {
+        turno = 'Diurno';
+    }
     
-    // O Lote_Batelada continua usando a data/hora atual (Início da Produção)
     const datePart = inicioProducaoDate.toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit' }).replace(/\//g, '');
     const timePart = inicioProducaoDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const loteBatelada = `${datePart}/${timePart}-${estufa}`;
-    // --- FIM DA LÓGICA ---
 
     const body = {
         Estufa: estufa,
@@ -2145,8 +2100,7 @@ else {
     
     if (result) {
         hideModal(document.getElementById('liofilizacao-details-modal'));
-        await fetchAllData();
-        applyAndRenderProducao();
+        await refreshCurrentView(); // Atualiza os dados e redesenha a tela
     }
     
     hideLoadingOverlay();
@@ -2186,8 +2140,7 @@ async function handleProducaoDelete() {
 
     if (result && result.success) {
         // A lógica de recalcular o estoque é automática, pois a "saída" foi removida.
-        await fetchAllData();
-        applyAndRenderProducao();
+        await refreshCurrentView();
     } else {
         alert('Falha ao apagar o registro.');
     }
@@ -2198,9 +2151,6 @@ async function handleProducaoDelete() {
 }
 
 // ======================================================================
-
-// ======================= SUBSTITUA A FUNÇÃO ANTIGA POR ESTA =======================
-
 async function handleProducaoFormSubmit(e) {
     e.preventDefault();
 
@@ -2258,7 +2208,7 @@ async function handleProducaoFormSubmit(e) {
     if (result) {
         hideModal(document.getElementById('producao-modal'));
         await checkAndFinalizeLote(activeLoteProducao.Id);
-        await fetchAllData();
+        await refreshCurrentView(); // Atualiza os dados e redesenha a tela
     }
     
     hideLoadingOverlay();
@@ -2327,13 +2277,12 @@ async function handleFormSubmit(e) {
         if (equipeInput) equipeInput.disabled = wereDisabled.equipe;
         if (dataInput) dataInput.disabled = wereDisabled.data;
 
-        // --- NOVA LÓGICA PARA O CAMPO CONTAINER ---
         if (type === 'estoque') {
             if (body.Status === 'Recusado') {
-                body.Container = ''; // Limpa o container se o status for Recusado
+                body.Container = ''; 
             }
             if (method === 'POST' && body.Status === 'Recebido') {
-                body.Status_Lote = 'Ativo'; // Define como ativo apenas se for Recebido
+                body.Status_Lote = 'Ativo';
             }
         }
 
@@ -2358,27 +2307,8 @@ async function handleFormSubmit(e) {
         const result = await nocoFetch(endpoint, { method, body: JSON.stringify(body) });
         
         if (result) {
-            // 1. Busca os dados atualizados de TODAS as tabelas
-            await fetchAllData(); 
-            
-            // 2. Esconde o formulário para mostrar a lista novamente
-            setupFormAndListVisibility(type, false);
-            
-            // 3. ATUALIZAÇÃO: Chama a função de renderização específica da tela atual
-            switch (type) {
-                case 'equipe':
-                    applyAndRenderEquipe();
-                    break;
-                case 'clientes':
-                    applyAndRenderClientes();
-                    break;
-                case 'produtos':
-                    applyAndRenderProdutos();
-                    break;
-                case 'estoque':
-                    applyAndRenderEstoque();
-                    break;
-            }
+            setupFormAndListVisibility(type, false); // Esconde o formulário
+            await refreshCurrentView(); // Atualiza os dados e redesenha a tela
         }
     } catch (error) {
         alert(`Erro ao salvar: ${error.message}`);
@@ -2386,7 +2316,6 @@ async function handleFormSubmit(e) {
         hideLoadingOverlay();
     }
 }
-// Função do modal de detalhes, atualizada para incluir a 'producaoData'
 // Função do modal de detalhes, atualizada para incluir a 'producaoData'
 function openDetailsModal(element) {
     const id = element.dataset.id;
@@ -2462,45 +2391,27 @@ function openDetailsModal(element) {
     showModal(document.getElementById('details-modal'));
 }
 
-    async function handleDelete() {
-        if (!activeDeleteItem) return;
-        const { id, type } = activeDeleteItem;
-        const tableName = TABLE_NAME_MAP[type];
-        if(!tableName) return;
-        const endpoint = `${tableName}/${id}`;
+async function handleDelete() {
+    if (!activeDeleteItem) return;
+    const { id, type } = activeDeleteItem;
+    const tableName = TABLE_NAME_MAP[type];
+    if(!tableName) return;
+    const endpoint = `${tableName}/${id}`;
 
-        showLoadingOverlay('Apagando...');
-        const result = await nocoFetch(endpoint, { method: 'DELETE' });
-        
-         if (result && result.success) {
-            // 1. Busca os dados atualizados de TODAS as tabelas
-            await fetchAllData();
-
-            // 2. ATUALIZAÇÃO: Chama a função de renderização específica da tela atual
-            switch (type) {
-                case 'equipe':
-                    applyAndRenderEquipe();
-                    break;
-                case 'clientes':
-                    applyAndRenderClientes();
-                    break;
-                case 'produtos':
-                    applyAndRenderProdutos();
-                    break;
-                case 'estoque':
-                    applyAndRenderEstoque();
-                    break;
-            }
-
-        } else {
-            alert('Falha ao apagar o registro.');
-        }
-        
-        hideLoadingOverlay();
-        hideModal(document.getElementById('delete-confirm-modal'));
-        hideModal(document.getElementById('details-modal'));
-        activeDeleteItem = null;
+    showLoadingOverlay('Apagando...');
+    const result = await nocoFetch(endpoint, { method: 'DELETE' });
+    
+    if (result && result.success) {
+        await refreshCurrentView(); // Atualiza os dados e redesenha a tela
+    } else {
+        alert('Falha ao apagar o registro.');
     }
+    
+    hideLoadingOverlay();
+    hideModal(document.getElementById('delete-confirm-modal'));
+    hideModal(document.getElementById('details-modal'));
+    activeDeleteItem = null;
+}
 
     function capitalize(s) {
         if (s === 'clientes') return 'Clientes';
@@ -2622,7 +2533,7 @@ function setupEventListeners() {
 
                 showModal(document.getElementById('liofilizacao-details-modal'));
 
-            } else if (action === 'finish-producao') {
+           } else if (action === 'finish-producao') {
                 const modal = document.getElementById('action-confirm-modal');
                 document.getElementById('action-confirm-modal-title').textContent = 'Finalizar Produção';
                 document.getElementById('action-confirm-modal-content').textContent = `Deseja realmente finalizar a produção #${String(id).padStart(4, '0')}? Esta ação registrará a data e hora atuais.`;
@@ -2644,8 +2555,7 @@ function setupEventListeners() {
                     });
                     if (result) {
                         hideModal(modal);
-                        await fetchAllData();
-                        applyAndRenderProducao();
+                        await refreshCurrentView(); // Atualiza os dados e redesenha a tela
                     }
                     hideLoadingOverlay();
                 }, { once: true });
