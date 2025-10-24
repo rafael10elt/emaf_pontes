@@ -1591,32 +1591,41 @@ function renderProducaoList(data) {
         }
     };
 
-    const statusPriority = {
-        'Pré-preparo': 1,
-        'Em Produção': 2,
-        'Finalizado': 3
-    };
+    const statusPriority = { 'Pré-preparo': 1, 'Em Produção': 2, 'Finalizado': 3 };
 
     const sortedData = [...data].sort((a, b) => {
         const priorityA = statusPriority[a.Status] || 99;
         const priorityB = statusPriority[b.Status] || 99;
-        if (priorityA !== priorityB) {
-            return priorityA - priorityB;
-        }
+        if (priorityA !== priorityB) return priorityA - priorityB;
+        
         switch (a.Status) {
-            case 'Pré-preparo':
-                return new Date(a.Inicio_Preparo) - new Date(b.Inicio_Preparo);
-            case 'Em Produção':
-                return new Date(a.Inicio_Producao) - new Date(b.Inicio_Producao);
-            case 'Finalizado':
-                return new Date(b.Finalizado) - new Date(a.Finalizado);
-            default:
-                return 0;
+            case 'Pré-preparo': return new Date(a.Inicio_Preparo) - new Date(b.Inicio_Preparo);
+            case 'Em Produção': return new Date(a.Inicio_Producao) - new Date(b.Inicio_Producao);
+            case 'Finalizado': return new Date(b.Finalizado) - new Date(a.Finalizado);
+            default: return 0;
         }
     });
 
+    // Atualiza o cabeçalho da tabela com a nova ordem e colunas
+    const thead = document.querySelector('#producao-list-container thead tr');
+    if (thead) {
+        thead.innerHTML = `
+            <th scope="col" class="px-6 py-3">Status</th>
+            <th scope="col" class="px-6 py-3">Cliente / Produto</th>
+            <th scope="col" class="px-6 py-3">Lote Estoque</th>
+            <th scope="col" class="px-6 py-3">Lote Batelada</th>
+            <th scope="col" class="px-6 py-3">Turno</th>
+            <th scope="col" class="px-6 py-3">Início Preparo</th>
+            <th scope="col" class="px-6 py-3">Início Produção</th>
+            <th scope="col" class="px-6 py-3">Finalizado</th>
+            <th scope="col" class="px-6 py-3">Responsável</th>
+            <th scope="col" class="px-6 py-3">Ações</th>
+        `;
+    }
+
     if (sortedData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-gray-500">Nenhum registro encontrado.</td></tr>`;
+        // Ajusta o colspan para o número correto de colunas (10)
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-gray-500">Nenhum registro encontrado para os filtros selecionados.</td></tr>`;
         return;
     }
 
@@ -1629,6 +1638,7 @@ function renderProducaoList(data) {
             `;
         }
 
+        // Constrói a linha da tabela com as novas colunas na ordem correta
         tbody.innerHTML += `
             <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700" data-id="${item.Id}" data-type="producao">
                 <td class="px-6 py-4"><span class="text-xs font-semibold px-2 py-0.5 rounded-full ${getStatusClass(item.Status)}">${item.Status || 'N/A'}</span></td>
@@ -1637,6 +1647,8 @@ function renderProducaoList(data) {
                     <span class="text-xs text-gray-500">${item.Emaf_Produto?.Produto || 'N/A'}</span>
                 </td>
                 <td class="px-6 py-4">${item.Emaf_Estoque?.Lote || 'N/A'}</td>
+                <td class="px-6 py-4">${item.Lote_Batelada || 'N/A'}</td>
+                <td class="px-6 py-4">${item.Turno || 'N/A'}</td>
                 <td class="px-6 py-4">${formatTimestamp(item.Inicio_Preparo)}</td>
                 <td class="px-6 py-4">${formatTimestamp(item.Inicio_Producao)}</td>
                 <td class="px-6 py-4">${formatTimestamp(item.Finalizado)}</td>
@@ -1684,6 +1696,7 @@ async function handleQtdFinalFormSubmit(e) {
     if (result) {
         hideModal(document.getElementById('qtd-final-modal'));
         await fetchAllData();
+        applyAndRenderProducao();
     }
     
     hideLoadingOverlay();
@@ -1940,6 +1953,7 @@ async function handleProducaoFormSubmit(e) {
         hideModal(document.getElementById('producao-modal'));
         await checkAndFinalizeLote(activeLoteProducao.Id);
         await fetchAllData();
+        applyAndRenderProducao();
     }
     
     hideLoadingOverlay();
@@ -2018,6 +2032,7 @@ async function handleLiofilizacaoFormSubmit(e) {
     if (result) {
         hideModal(document.getElementById('liofilizacao-details-modal'));
         await fetchAllData();
+        applyAndRenderProducao();
     }
     
     hideLoadingOverlay();
@@ -2129,6 +2144,7 @@ async function handleProducaoDelete() {
     if (result && result.success) {
         // A lógica de recalcular o estoque é automática, pois a "saída" foi removida.
         await fetchAllData();
+        applyAndRenderProducao();
     } else {
         alert('Falha ao apagar o registro.');
     }
@@ -2549,6 +2565,7 @@ function setupEventListeners() {
                     if (result) {
                         hideModal(modal);
                         await fetchAllData();
+                        applyAndRenderProducao();
                     }
                     hideLoadingOverlay();
                 }, { once: true });
