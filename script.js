@@ -1719,13 +1719,13 @@ function renderProducaoList(data) {
     const thead = document.querySelector('#producao-list-container thead tr');
     if (thead) {
         thead.innerHTML = `
-            <th scope="col" class="px-6 py-3">Status</th>
-            <th scope="col" class="px-6 py-3">Cliente / Produto</th>
+            <th scope="col" class="px-6 py-3">Statusssss</th>
+            <th scope="col" class="px-6 py-3">Clientessss / Produto</th>
             <th scope="col" class="px-6 py-3">Lote Estoque</th>
             <th scope="col" class="px-6 py-3">Lote Batelada</th>
             <th scope="col" class="px-6 py-3">Início Preparo</th>
             <th scope="col" class="px-6 py-3">Início Produção</th>
-            <th scope="col" class="px-6 py-3">Finalizado</th>
+            <th scope="col" class="px-6 py-3">Finalizadossss</th>
             <th scope="col" class="px-6 py-3">Responsável / Turno</th>
             <th scope="col" class="px-6 py-3">Ações</th>
         `;
