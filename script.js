@@ -2129,13 +2129,13 @@ function renderProducaoList(data) {
                     <span class="text-xs text-gray-500 dark:text-gray-400">${item.Emaf_Produto?.Produto || 'N/A'}</span>
                 </td>
                 <td class="px-6 py-4">${item.Emaf_Estoque?.Lote || 'N/A'}</td>
-                <td class="px-6 py-4">${item.Lote_Batelada || 'N/A'}</td> {/* CORRIGIDO */}
-                <td class="px-6 py-4">${item.Turno || 'N/A'}</td> {/* CORRIGIDO */}
-                <td class="px-6 py-4">${formatTimestamp(item.Inicio_Preparo)}</td> {/* CORRIGIDO */}
-                <td class="px-6 py-4">${formatTimestamp(item.Inicio_Producao)}</td> {/* CORRIGIDO */}
-                <td class="px-6 py-4">${formatTimestamp(item.Finalizado)}</td> {/* CORRIGIDO */}
-                <td class="px-6 py-4">${item.Emaf_Equipe?.Nome || 'N/A'}</td> {/* CORRIGIDO */}
-                <td class="px-6 py-4 space-x-2 whitespace-nowrap">${actionsHTML}</td> {/* CORRIGIDO */}
+                <td class="px-6 py-4">${item.Lote_Batelada || 'N/A'}</td>
+                <td class="px-6 py-4">${item.Turno || 'N/A'}</td>
+                <td class="px-6 py-4">${formatTimestamp(item.Inicio_Preparo)}</td>
+                <td class="px-6 py-4">${formatTimestamp(item.Inicio_Producao)}</td>
+                <td class="px-6 py-4">${formatTimestamp(item.Finalizado)}</td>
+                <td class="px-6 py-4">${item.Emaf_Equipe?.Nome || 'N/A'}</td>
+                <td class="px-6 py-4 space-x-2 whitespace-nowrap">${actionsHTML}</td>
             </tr>
         `;
     });
