@@ -2004,10 +2004,6 @@ async function handleLiofilizacaoFormSubmit(e) {
     
     hideLoadingOverlay();
 }
-Ação 2: Corrigir a Renderização da Tabela (renderProducaoList)
-Substitua sua função renderProducaoList por esta versão com a ordem correta das colunas.
-code
-JavaScript
 // ======================= SUBSTITUA A FUNÇÃO ANTIGA POR ESTA =======================
 function renderProducaoList(data) {
     const tbody = document.getElementById('producao-table-body');
