@@ -93,6 +93,21 @@ const charts = {
     };
 
     // --- Funções de API e Utilitários ---
+    function getTurno(date) {
+    if (!date) return 'Indefinido'; // Retorna 'Indefinido' se a data for inválida
+
+    const dataObj = new Date(date);
+    const hour = dataObj.getHours();
+    
+    // Turno Noturno: entre 18:00 e 04:59
+    if (hour >= 18 || hour < 5) {
+        return 'Noturno';
+    } 
+    // Todo o resto é considerado Diurno
+    else {
+        return 'Diurno';
+    }
+}
     async function refreshCurrentView() {
     showLoadingOverlay('Atualizando dados...');
     await fetchAllData(); // Primeiro, busca os dados mais recentes do servidor.
@@ -2069,17 +2084,9 @@ async function handleLiofilizacaoFormSubmit(e) {
     
     showLoadingOverlay('Iniciando Produção...');
     
-    const inicioProducaoDate = new Date(); 
-    const preparoDate = new Date(activeProducaoItem.Inicio_Preparo);
-    const hour = preparoDate.getHours();
-
-    let turno; 
-    if (hour >= 18 || hour < 5) {
-        turno = 'Noturno';
-    } else {
-        turno = 'Diurno';
-    }
+    const inicioProducaoDate = new Date(); // Data e hora do clique no botão
     
+    // Geração do Lote Batelada
     const datePart = inicioProducaoDate.toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit' }).replace(/\//g, '');
     const timePart = inicioProducaoDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const loteBatelada = `${datePart}/${timePart}-${estufa}`;
@@ -2089,8 +2096,8 @@ async function handleLiofilizacaoFormSubmit(e) {
         Bandeja: bandeja,
         Status: 'Em Produção',
         Inicio_Producao: inicioProducaoDate.toISOString(),
-        Turno: turno,                  
-        Lote_Batelada: loteBatelada    
+        Lote_Batelada: loteBatelada
+        // Não precisamos mais definir o Turno aqui, pois ele já foi salvo na criação.
     };
     
     const result = await nocoFetch(`${TABLE_NAME_MAP.producao}/${activeProducaoItem.Id}`, {
@@ -2100,7 +2107,7 @@ async function handleLiofilizacaoFormSubmit(e) {
     
     if (result) {
         hideModal(document.getElementById('liofilizacao-details-modal'));
-        await refreshCurrentView(); // Atualiza os dados e redesenha a tela
+        await refreshCurrentView();
     }
     
     hideLoadingOverlay();
@@ -2158,8 +2165,7 @@ async function handleProducaoFormSubmit(e) {
     const id = form.querySelector('#producao-Id').value;
     const method = id ? 'PATCH' : 'POST';
 
-    // Validação do Lote
-    if (!activeLoteProducao && !id) { // Só valida no modo de criação
+    if (!activeLoteProducao) {
         alert("Erro: Nenhum lote de origem válido foi selecionado. Por favor, verifique o cliente e o produto.");
         return;
     }
@@ -2172,8 +2178,7 @@ async function handleProducaoFormSubmit(e) {
         alert("Por favor, insira uma quantidade de insumo válida.");
         return;
     }
-    
-    // Para edição, o saldo disponível é o saldo atual + o que este próprio item já consumiu
+
     const saldoDisponivel = id ? (activeLoteProducao.saldo + activeProducaoItem.Qtde_Insumo) : activeLoteProducao.saldo;
     
     if (qtdeInsumo > saldoDisponivel) {
@@ -2184,18 +2189,26 @@ async function handleProducaoFormSubmit(e) {
     showLoadingOverlay(id ? 'Atualizando...' : 'Criando...');
     
     const body = {
-        Emaf_Clientes_id: parseInt(form.querySelector('#producao-Cliente').value),
-        Emaf_Produto_id: parseInt(form.querySelector('#producao-Produto').value),
-        Emaf_Equipe_id: parseInt(form.querySelector('#producao-Equipe').value),
-        Emaf_Estoque_id: activeLoteProducao.Id,
         Qtde_Insumo: qtdeInsumo,
         Observacao: form.querySelector('#producao-Observacao').value,
     };
     
-    // Adiciona campos apenas na criação
-    if (!id) {
+    const nowISO = new Date().toISOString(); // Pega a data/hora atual uma vez
+
+    // NocoDB usa formatos diferentes para POST (criar) e PATCH (atualizar) relacionamentos
+    if (method === 'POST') {
+        body.Emaf_Clientes = { Id: parseInt(form.querySelector('#producao-Cliente').value) };
+        body.Emaf_Produto = { Id: parseInt(form.querySelector('#producao-Produto').value) };
+        body.Emaf_Equipe = { Id: parseInt(form.querySelector('#producao-Equipe').value) };
+        body.Emaf_Estoque = { Id: activeLoteProducao.Id };
         body.Status = 'Pré-preparo';
-        body.Inicio_Preparo = new Date().toISOString();
+        body.Inicio_Preparo = nowISO; // Usa a data/hora atual para o início do preparo
+        body.Turno = getTurno(nowISO); // <<<---- AQUI É A MUDANÇA PRINCIPAL
+    } else { // PATCH
+        body.Emaf_Clientes_id = parseInt(form.querySelector('#producao-Cliente').value);
+        body.Emaf_Produto_id = parseInt(form.querySelector('#producao-Produto').value);
+        body.Emaf_Equipe_id = parseInt(form.querySelector('#producao-Equipe').value);
+        body.Emaf_Estoque_id = activeLoteProducao.Id;
     }
 
     const endpoint = id ? `${TABLE_NAME_MAP.producao}/${id}` : TABLE_NAME_MAP.producao;
@@ -2208,7 +2221,7 @@ async function handleProducaoFormSubmit(e) {
     if (result) {
         hideModal(document.getElementById('producao-modal'));
         await checkAndFinalizeLote(activeLoteProducao.Id);
-        await refreshCurrentView(); // Atualiza os dados e redesenha a tela
+        await refreshCurrentView(); 
     }
     
     hideLoadingOverlay();
