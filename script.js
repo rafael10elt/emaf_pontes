@@ -1658,7 +1658,7 @@ function renderProducaoList(data) {
             `;
         }
 
-        // --- MODIFICAÇÃO 2: Constrói a linha da tabela (<tr>) com as células (<td>) na ordem CORRETA ---
+        // --- MODIFICAÇÃO 2: Constrói a linha da tabela (<tr>) com as células (<td>
         tbody.innerHTML += `
             <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600" data-id="${item.Id}" data-type="producao">
                 <td class="px-6 py-4 whitespace-nowrap"><span class="text-xs font-semibold px-2 py-0.5 rounded-full ${getStatusClass(item.Status)}">${item.Status || 'N/A'}</span></td>
