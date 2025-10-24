@@ -2358,8 +2358,27 @@ async function handleFormSubmit(e) {
         const result = await nocoFetch(endpoint, { method, body: JSON.stringify(body) });
         
         if (result) {
-            await fetchAllData();
+            // 1. Busca os dados atualizados de TODAS as tabelas
+            await fetchAllData(); 
+            
+            // 2. Esconde o formulário para mostrar a lista novamente
             setupFormAndListVisibility(type, false);
+            
+            // 3. ATUALIZAÇÃO: Chama a função de renderização específica da tela atual
+            switch (type) {
+                case 'equipe':
+                    applyAndRenderEquipe();
+                    break;
+                case 'clientes':
+                    applyAndRenderClientes();
+                    break;
+                case 'produtos':
+                    applyAndRenderProdutos();
+                    break;
+                case 'estoque':
+                    applyAndRenderEstoque();
+                    break;
+            }
         }
     } catch (error) {
         alert(`Erro ao salvar: ${error.message}`);
@@ -2453,8 +2472,26 @@ function openDetailsModal(element) {
         showLoadingOverlay('Apagando...');
         const result = await nocoFetch(endpoint, { method: 'DELETE' });
         
-        if (result && result.success) {
+         if (result && result.success) {
+            // 1. Busca os dados atualizados de TODAS as tabelas
             await fetchAllData();
+
+            // 2. ATUALIZAÇÃO: Chama a função de renderização específica da tela atual
+            switch (type) {
+                case 'equipe':
+                    applyAndRenderEquipe();
+                    break;
+                case 'clientes':
+                    applyAndRenderClientes();
+                    break;
+                case 'produtos':
+                    applyAndRenderProdutos();
+                    break;
+                case 'estoque':
+                    applyAndRenderEstoque();
+                    break;
+            }
+
         } else {
             alert('Falha ao apagar o registro.');
         }
