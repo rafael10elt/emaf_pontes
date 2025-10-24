@@ -1570,7 +1570,6 @@ function renderProducaoList(data) {
         }
     };
 
-    // Mapa de prioridade dos status
     const statusPriority = {
         'Pré-preparo': 1,
         'Em Produção': 2,
@@ -1578,25 +1577,28 @@ function renderProducaoList(data) {
     };
 
     const sortedData = [...data].sort((a, b) => {
-        // 1. Ordena primeiro pela prioridade do status
         const priorityA = statusPriority[a.Status] || 99;
         const priorityB = statusPriority[b.Status] || 99;
         if (priorityA !== priorityB) {
             return priorityA - priorityB;
         }
 
-        // 2. Se o status for o mesmo, aplica a regra de ordenação por data
         switch (a.Status) {
             case 'Pré-preparo':
-                return new Date(a.Inicio_Preparo) - new Date(b.Inicio_Preparo); // Mais antigo primeiro
+                return new Date(a.Inicio_Preparo) - new Date(b.Inicio_Preparo);
             case 'Em Produção':
-                return new Date(a.Inicio_Producao) - new Date(b.Inicio_Producao); // Mais antigo primeiro
+                return new Date(a.Inicio_Producao) - new Date(b.Inicio_Producao);
             case 'Finalizado':
-                return new Date(b.Finalizado) - new Date(a.Finalizado); // Mais recente primeiro
+                return new Date(b.Finalizado) - new Date(a.Finalizado);
             default:
                 return 0;
         }
     });
+
+    if (sortedData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-gray-500">Nenhum registro encontrado para os filtros selecionados.</td></tr>`;
+        return;
+    }
 
     sortedData.forEach(item => {
         let actionsHTML = `<button class="action-btn text-gray-500" data-action="details" data-type="producao" title="Ver Detalhes"><i class="fas fa-eye"></i></button>`;
@@ -1607,6 +1609,7 @@ function renderProducaoList(data) {
             `;
         }
 
+        // --- ORDEM DAS COLUNAS CORRIGIDA AQUI ---
         tbody.innerHTML += `
             <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700" data-id="${item.Id}" data-type="producao">
                 <td class="px-6 py-4"><span class="text-xs font-semibold px-2 py-0.5 rounded-full ${getStatusClass(item.Status)}">${item.Status}</span></td>
@@ -1614,6 +1617,7 @@ function renderProducaoList(data) {
                     ${item.Emaf_Clientes?.Cliente || 'N/A'}<br>
                     <span class="text-xs text-gray-500">${item.Emaf_Produto?.Produto || 'N/A'}</span>
                 </td>
+                <td class="px-6 py-4">${item.Emaf_Estoque?.Lote || 'N/A'}</td>
                 <td class="px-6 py-4">${item.Lote_Batelada || 'N/A'}</td>
                 <td class="px-6 py-4">${item.Turno || 'N/A'}</td>
                 <td class="px-6 py-4">${formatTimestamp(item.Inicio_Preparo)}</td>
