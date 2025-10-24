@@ -87,6 +87,8 @@ const charts = {
     finalizado: 'Finalizado em',
     estufa: 'Estufa',
     bandeja: 'Bandejas',
+    lote_batelada: 'Lote Batelada',
+    turno: 'Turno', 
     status_lote: 'Status do Lote'
     };
 
@@ -1270,24 +1272,27 @@ function updateMovimentacaoChart(data) {
 // Função que aplica os filtros e decide qual view renderizar
 
 function getFilteredProducaoData() {
-    // 1. Obter os valores de todos os filtros
     const startDate = document.getElementById('filter-producao-start-date').value;
     const endDate = document.getElementById('filter-producao-end-date').value;
     const lote = document.getElementById('filter-producao-lote').value.toLowerCase();
     const responsavelId = document.getElementById('filter-producao-responsavel').value;
     const estufa = document.getElementById('filter-producao-estufa').value;
     const status = document.getElementById('filter-producao-status').value;
+    const turno = document.getElementById('filter-producao-turno').value; 
 
-    // 2. Filtrar o array de dados principal
     const filteredData = producaoData.filter(item => {
         const itemDate = item.Inicio_Preparo ? item.Inicio_Preparo.slice(0, 10) : null;
+
         const dateMatch = (!startDate || (itemDate && itemDate >= startDate)) && 
                           (!endDate || (itemDate && itemDate <= endDate));
-        const loteMatch = !lote || (item.Emaf_Estoque?.Lote || '').toLowerCase().includes(lote);
+        
+        const loteMatch = !lote || (item.Lote_Batelada || '').toLowerCase().includes(lote); 
         const responsavelMatch = !responsavelId || item.Emaf_Equipe?.Id == responsavelId;
         const estufaMatch = !estufa || item.Estufa == estufa;
         const statusMatch = !status || item.Status === status;
-        return dateMatch && loteMatch && responsavelMatch && estufaMatch && statusMatch;
+        const turnoMatch = !turno || item.Turno === turno; 
+
+        return dateMatch && loteMatch && responsavelMatch && estufaMatch && statusMatch && turnoMatch;
     });
     return filteredData;
 }
@@ -1482,7 +1487,7 @@ function createProducaoCard(item) {
 
     let actionButtonHTML = '';
     let crudButtonsHTML = '';
-    let detailsHTML = '';
+    let detailsHTML = ''; // Variável para os detalhes incrementais
 
     // --- Lógica dos Botões de Ação ---
     if (item.Status === 'Pré-preparo') {
@@ -1514,6 +1519,8 @@ function createProducaoCard(item) {
     }
     if (item.Inicio_Producao) {
         detailsHTML += `<p><i class="fas fa-industry w-4 text-gray-400"></i> Produção: <span class="font-medium text-gray-800 dark:text-gray-200">${formatTimestamp(item.Inicio_Producao)}</span></p>`;
+        detailsHTML += `<p><i class="fas fa-tag w-4 text-gray-400"></i> Lote Batelada: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Lote_Batelada || 'N/A'}</span></p>`;
+        detailsHTML += `<p><i class="fas fa-sun w-4 text-gray-400"></i> Turno: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Turno || 'N/A'}</span></p>`;
         detailsHTML += `<p><i class="fas fa-thermometer-half w-4 text-gray-400"></i> Estufa: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Estufa}</span> | Bandejas: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Bandeja}</span></p>`;
     }
     if (item.Finalizado) {
@@ -1607,7 +1614,8 @@ function renderProducaoList(data) {
                     ${item.Emaf_Clientes?.Cliente || 'N/A'}<br>
                     <span class="text-xs text-gray-500">${item.Emaf_Produto?.Produto || 'N/A'}</span>
                 </td>
-                <td class="px-6 py-4">${item.Emaf_Estoque?.Lote || 'N/A'}</td>
+                <td class="px-6 py-4">${item.Lote_Batelada || 'N/A'}</td>
+                <td class="px-6 py-4">${item.Turno || 'N/A'}</td>
                 <td class="px-6 py-4">${formatTimestamp(item.Inicio_Preparo)}</td>
                 <td class="px-6 py-4">${formatTimestamp(item.Inicio_Producao)}</td>
                 <td class="px-6 py-4">${formatTimestamp(item.Finalizado)}</td>
@@ -1951,11 +1959,39 @@ async function handleLiofilizacaoFormSubmit(e) {
     
     showLoadingOverlay('Iniciando Produção...');
     
+    // --- INÍCIO DA LÓGICA DE PREENCHIMENTO AUTOMÁTICO ---
+    const now = new Date();
+    const hour = now.getHours();
+
+    let turno = 'Indefinido';
+    // Lógica para turno Noturno (19:00 de um dia até 04:48 do dia seguinte)
+    if (hour >= 19 || hour < 5) { // Cobre de 19:00 até 04:59
+        if (hour === 4 && now.getMinutes() > 48) {
+            turno = 'Diurno'; // Já passou das 04:48
+        } else {
+            turno = 'Noturno';
+        }
+    } else if (hour >= 7 && hour < 17) { // Cobre de 07:00 até 16:59
+        if (hour === 16 && now.getMinutes() > 48) {
+             turno = 'Indefinido'; // Intervalo
+        } else {
+            turno = 'Diurno';
+        }
+    }
+    
+    // Formatação do Lote_Batelada: DDMMYY/HH:mm-Estufa
+    const datePart = now.toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit' }).replace(/\//g, '');
+    const timePart = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const loteBatelada = `${datePart}/${timePart}-${estufa}`;
+    // --- FIM DA LÓGICA ---
+
     const body = {
         Estufa: estufa,
         Bandeja: bandeja,
         Status: 'Em Produção',
-        Inicio_Producao: new Date().toISOString() 
+        Inicio_Producao: now.toISOString(),
+        Turno: turno,                  // <-- NOVO CAMPO ADICIONADO
+        Lote_Batelada: loteBatelada    // <-- NOVO CAMPO ADICIONADO
     };
     
     const result = await nocoFetch(`${TABLE_NAME_MAP.producao}/${activeProducaoItem.Id}`, {
@@ -1969,6 +2005,80 @@ async function handleLiofilizacaoFormSubmit(e) {
     }
     
     hideLoadingOverlay();
+}
+Ação 3: Atualizar createProducaoCard (Visualização Kanban)
+Adicione a exibição dos novos campos no card.
+code
+JavaScript
+// ======================= SUBSTITUA A FUNÇÃO ANTIGA POR ESTA =======================
+function createProducaoCard(item) {
+    // ... (lógica inicial da função e dos botões permanece a mesma) ...
+    const formatQuantity = (qty) => Number(qty || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    let actionButtonHTML = '';
+    let crudButtonsHTML = '';
+    let detailsHTML = '';
+
+    if (item.Status === 'Pré-preparo') {
+        actionButtonHTML = `<button class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition-colors action-btn-producao" data-action="start-liofilizacao" data-id="${item.Id}">
+                                <i class="fas fa-industry mr-2"></i>Iniciar Produção
+                            </button>`;
+        crudButtonsHTML = `
+            <button class="action-btn-producao-crud text-blue-500 hover:text-blue-700" data-action="edit" data-id="${item.Id}" title="Editar"><i class="fas fa-edit"></i></button>
+            <button class="action-btn-producao-crud text-red-500 hover:text-red-700" data-action="delete" data-id="${item.Id}" title="Apagar"><i class="fas fa-trash"></i></button>
+        `;
+    } else if (item.Status === 'Em Produção') { 
+        actionButtonHTML = `<button class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition-colors action-btn-producao" data-action="finish-producao" data-id="${item.Id}">
+                                <i class="fas fa-check-circle mr-2"></i>Finalizar Produção
+                            </button>`;
+    } else if (item.Status === 'Finalizado' && (!item.Qtde_Final || item.Qtde_Final <= 0)) {
+        actionButtonHTML = `<button class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors action-btn-producao" data-action="add-qtd-final" data-id="${item.Id}">
+                                <i class="fas fa-balance-scale-right mr-2"></i>Informar Qtd. Final
+                            </button>`;
+    }
+
+    // --- Lógica Incremental dos Detalhes ---
+    if (item.Inicio_Preparo) {
+        detailsHTML += `<p><i class="far fa-clock w-4 text-gray-400"></i> Preparo: <span class="font-medium text-gray-800 dark:text-gray-200">${formatTimestamp(item.Inicio_Preparo)}</span></p>`;
+    }
+    if (item.Inicio_Producao) {
+        detailsHTML += `<p><i class="fas fa-industry w-4 text-gray-400"></i> Produção: <span class="font-medium text-gray-800 dark:text-gray-200">${formatTimestamp(item.Inicio_Producao)}</span></p>`;
+        // ADICIONA LOTE BATELADA E TURNO AQUI
+        detailsHTML += `<p><i class="fas fa-tag w-4 text-gray-400"></i> Lote Batelada: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Lote_Batelada || 'N/A'}</span></p>`;
+        detailsHTML += `<p><i class="fas fa-sun w-4 text-gray-400"></i> Turno: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Turno || 'N/A'}</span></p>`;
+        detailsHTML += `<p><i class="fas fa-thermometer-half w-4 text-gray-400"></i> Estufa: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Estufa}</span> | Bandejas: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Bandeja}</span></p>`;
+    }
+    if (item.Finalizado) {
+        detailsHTML += `<p><i class="far fa-check-circle w-4 text-gray-400"></i> Finalizado: <span class="font-medium text-gray-800 dark:text-gray-200">${formatTimestamp(item.Finalizado)}</span></p>`;
+        detailsHTML += `<p><i class="fas fa-hourglass-half w-4 text-gray-400"></i> Duração Total: <span class="font-bold text-blue-500">${calculateDuration(item.Inicio_Preparo, item.Finalizado)}</span></p>`;
+        
+        if (item.Qtde_Final > 0) {
+             detailsHTML += `<p><i class="fas fa-balance-scale-right w-4 text-gray-400"></i> Qtd. Final: <span class="font-bold text-green-600 dark:text-green-400">${formatQuantity(item.Qtde_Final)} Kg</span></p>`;
+        } else {
+             detailsHTML += `<p class="text-yellow-600 dark:text-yellow-400 font-semibold mt-2"><i class="fas fa-exclamation-triangle w-4"></i> Pendente: Informar Quantidade Final</p>`;
+        }
+    }
+
+    // --- Template Final do Card ---
+    return `
+        <div class="bg-white dark:bg-gray-700 rounded-lg shadow-md p-4 border-l-4 border-brand-gold" data-id="${item.Id}">
+            <div class="flex justify-between items-start mb-2">
+                <h4 class="font-bold text-gray-900 dark:text-white pr-2">${item.Emaf_Clientes?.Cliente || 'N/A'}</h4>
+                <div class="flex items-center space-x-2 flex-shrink-0">
+                    <span class="text-xs text-gray-500 dark:text-gray-400">#${String(item.Id).padStart(4, '0')}</span>
+                    ${crudButtonsHTML}
+                </div>
+            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">${item.Emaf_Produto?.Produto || 'N/A'}</p>
+            <div class="text-xs text-gray-500 dark:text-gray-400 space-y-1 mb-3">
+                <p><i class="fas fa-box w-4"></i> Lote do Estoque: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Emaf_Estoque?.Lote || 'N/A'}</span></p>
+                <p><i class="fas fa-weight-hanging w-4"></i> Insumo: <span class="font-medium text-gray-800 dark:text-gray-200">${formatQuantity(item.Qtde_Insumo)} Kg</span></p>
+                <p><i class="fas fa-user w-4"></i> Responsável: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Emaf_Equipe?.Nome || 'N/A'}</span></p>
+            </div>
+            ${detailsHTML ? `<div class="text-xs text-gray-500 dark:text-gray-400 space-y-1 py-3 border-t border-b border-gray-200 dark:border-gray-600 my-3">${detailsHTML}</div>` : ''}
+            ${actionButtonHTML ? `<div class="pt-2">${actionButtonHTML}</div>` : ''}
+        </div>
+    `;
 }
 async function setupProducaoFormForEdit(item) {
     if (!item) return;
@@ -2483,6 +2593,7 @@ function setupEventListeners() {
         document.getElementById('filter-producao-responsavel').value = '';
         document.getElementById('filter-producao-estufa').value = '';
         document.getElementById('filter-producao-status').value = '';
+        document.getElementById('filter-producao-turno').value = '';
         applyAndRenderProducao();
     });
     // Listeners para os filtros da tela de Produção
