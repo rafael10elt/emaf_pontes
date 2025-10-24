@@ -2067,7 +2067,8 @@ async function handleProducaoFormSubmit(e) {
         hideModal(document.getElementById('producao-modal'));
         await checkAndFinalizeLote(activeLoteProducao.Id);
         await fetchAllData();
-        applyAndRenderProducao();
+        
+        applyAndRenderProducao(); 
     }
     
     hideLoadingOverlay();
@@ -2377,9 +2378,6 @@ async function handleFormSubmit(e) {
                     break;
                 case 'estoque':
                     applyAndRenderEstoque();
-                    break;
-                case 'producao':
-                    applyAndRenderProducao();
                     break;
             }
         }
