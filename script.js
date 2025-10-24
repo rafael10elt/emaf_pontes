@@ -1316,15 +1316,7 @@ function renderEstoque(data) {
                 <div class="flex justify-end pt-2 mt-2 border-t dark:border-gray-600 space-x-2">${actionsHTML}</div>
             </div>`;
     });
-}```
-
-#### 3. Função `createProducaoCard` (Visão Kanban da Produção)
-
-Aqui, `Admin` e `Gestor` têm permissão para editar/apagar, mas apenas no estágio "Pré-preparo". O usuário de `Produção` não pode.
-
-**Substitua a sua função `createProducaoCard` atual por esta:**
-
-```javascript
+}
 function createProducaoCard(item) {
     const formatQuantity = (qty) => Number(qty || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
