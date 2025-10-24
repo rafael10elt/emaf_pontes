@@ -1036,26 +1036,29 @@ async function initializeUserSession(user) {
     document.getElementById('login-screen').classList.add('hidden');
     document.getElementById('main-app').classList.remove('hidden');
 
-    // --- 2. Lógica de Permissões (Início) ---
-    // Reseta a visibilidade para o padrão (tudo visível) antes de aplicar as restrições.
+    // --- 2. Lógica de Permissões ---
+    // Reseta a visibilidade para o padrão (tudo visível)
     document.querySelectorAll('.nav-link').forEach(link => link.style.display = 'flex');
-    document.getElementById('show-equipe-form').style.display = 'block';
-    document.getElementById('show-clientes-form').style.display = 'block';
-    document.getElementById('show-produtos-form').style.display = 'block';
-    document.getElementById('show-estoque-form').style.display = 'block';
-    document.getElementById('show-producao-form').style.display = 'block';
+    document.querySelectorAll('#show-equipe-form, #show-clientes-form, #show-produtos-form, #show-estoque-form, #show-producao-form').forEach(btn => btn.style.display = 'block');
     document.getElementById('toggle-list-view').style.display = 'block';
     document.getElementById('toggle-kanban-view').style.display = 'block';
     document.getElementById('generate-producao-report').style.display = 'block';
+    
+    // Esconde o Dashboard e o botão de Relatório para todos, exceto Admin
+    if (userRole !== 'Admin') {
+        document.querySelector('.nav-link[data-target="dashboard"]').style.display = 'none';
+        document.getElementById('generate-producao-report').style.display = 'none';
+    }
 
-    // Aplica as restrições com base no perfil
+    // Restrições para Gestão
     if (userRole === 'Gestão') {
         // Gestor não vê a aba de Equipe
         document.querySelector('.nav-link[data-target="equipe"]').style.display = 'none';
         document.getElementById('show-equipe-form').style.display = 'none';
     } 
+    // Restrições para Produção
     else if (userRole === 'Produção') {
-        // Produção tem acesso restrito
+        // Esconde abas de navegação
         document.querySelector('.nav-link[data-target="equipe"]').style.display = 'none';
         document.querySelector('.nav-link[data-target="clientes"]').style.display = 'none';
         document.querySelector('.nav-link[data-target="produtos"]').style.display = 'none';
@@ -1065,21 +1068,22 @@ async function initializeUserSession(user) {
         document.getElementById('show-clientes-form').style.display = 'none';
         document.getElementById('show-produtos-form').style.display = 'none';
         
-        // Na tela de Produção, esconde o botão de gerar relatório e os de alternar visão
+        // Na tela de Produção, esconde os botões de alternar visão
         document.getElementById('toggle-list-view').style.display = 'none';
         document.getElementById('toggle-kanban-view').style.display = 'none';
-        document.getElementById('generate-producao-report').style.display = 'none';
         
-        // Força a visualização para Kanban e esconde a lista
+        // Força a visualização para Kanban
         currentProducaoView = 'kanban';
         document.getElementById('producao-kanban-container').classList.remove('hidden');
         document.getElementById('producao-list-container').classList.add('hidden');
     }
-    // Para 'Admin', nada é escondido.
 
     // --- 3. Carrega dados e navega para a página inicial ---
     await fetchAllData();
-    navigateTo(sessionStorage.getItem('currentPage') || 'dashboard');
+    
+    // Define a página inicial: Dashboard para Admin, Estoque para os outros
+    const initialPage = sessionStorage.getItem('currentPage') || (userRole === 'Admin' ? 'dashboard' : 'estoque');
+    navigateTo(initialPage);
 }
 
     async function checkSession() {
@@ -1267,14 +1271,14 @@ function renderEstoque(data) {
         return Number(qty).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 5 });
     };
 
-    // Apenas o Admin pode editar e apagar no Estoque
-    const canManageEstoque = loggedInUser.Role === 'Admin';
+    // NOVO: Permite que Admin E Gestão gerenciem o estoque
+    const canManageEstoque = ['Admin', 'Gestão'].includes(loggedInUser.Role);
 
     data.forEach(item => {
         const statusClass = getStatusClass(item.Status);
         const dataFormatada = item.Data ? new Date(item.Data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short'}) : 'N/A';
         
-        // Constrói os botões de ação com base na permissão
+        // A lógica de construção dos botões agora usa a nova variável 'canManageEstoque'
         const actionsHTML = `
             <button class="action-btn text-gray-500" data-action="details" title="Ver Detalhes"><i class="fas fa-eye"></i></button>
             ${canManageEstoque ? `
