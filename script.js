@@ -2378,6 +2378,9 @@ async function handleFormSubmit(e) {
                 case 'estoque':
                     applyAndRenderEstoque();
                     break;
+                case 'producao':
+                    applyAndRenderProducao();
+                    break;
             }
         }
     } catch (error) {
