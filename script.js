@@ -991,7 +991,7 @@ async function fetchAllData() {
     }
     async function fetchProducao() {
     // Usamos nested[all]=true para já trazer os dados das tabelas relacionadas (cliente, produto, etc.)
-    const result = await nocoFetch('Emaf_Producao?nested[all]=true');
+    const result = await nocoFetch('Emaf_Producao?nested[all]=true&fields=*');
     producaoData = (result && result.list) ? result.list : [];
 }
 
