@@ -1631,11 +1631,10 @@ function renderProducaoList(data) {
             <th scope="col" class="px-6 py-3">Cliente / Produto</th>
             <th scope="col" class="px-6 py-3">Lote Estoque</th>
             <th scope="col" class="px-6 py-3">Lote Batelada</th>
-            {/* REMOVIDO: <th scope="col" class="px-6 py-3">Turno</th> */}
             <th scope="col" class="px-6 py-3">Início Preparo</th>
             <th scope="col" class="px-6 py-3">Início Produção</th>
             <th scope="col" class="px-6 py-3">Finalizado</th>
-            <th scope="col" class="px-6 py-3">Responsável / Turno</th> {/* ALTERADO */}
+            <th scope="col" class="px-6 py-3">Responsável / Turno</th>
             <th scope="col" class="px-6 py-3">Ações</th>
         `;
     }
@@ -1673,7 +1672,7 @@ function renderProducaoList(data) {
                 <td class="px-6 py-4">${formatTimestamp(item.Inicio_Preparo)}</td>
                 <td class="px-6 py-4">${formatTimestamp(item.Inicio_Producao)}</td>
                 <td class="px-6 py-4">${formatTimestamp(item.Finalizado)}</td>
-                <td class="px-6 py-4"> {/* ALTERADO */}
+                <td class="px-6 py-4">
                     ${item.Emaf_Equipe?.Nome || 'N/A'}<br>
                     <span class="text-xs text-gray-500 dark:text-gray-400">${item.Turno || 'N/A'}</span>
                 </td>
