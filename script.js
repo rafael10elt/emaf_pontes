@@ -956,22 +956,24 @@ function updateMovimentacaoChart(data) {
         createChart(ctx, 'bar', chartData, options, 'recusasProdutoChart');
     }
     // --- Funções de Carregamento de Dados ---
-async function fetchAllData() {
-    showLoadingOverlay('Carregando dados do sistema...');
-    await Promise.all([
-        fetchEquipe(),
-        fetchClientes(),
-        fetchProdutos(),
-        fetchEstoque(),
-        fetchProducao()
-    ]);
-    
-    // Apenas preenche os selects que são usados em várias telas
-    populateSelects(); 
-    
-    // As funções de renderização foram movidas para a função navigateTo()
-    hideLoadingOverlay();
-}
+    async function fetchAllData() {
+        showLoadingOverlay('Carregando dados do sistema...');
+        await Promise.all([
+            fetchEquipe(),
+            fetchClientes(),
+            fetchProdutos(),
+            fetchEstoque(),
+            fetchProducao()
+        ]);
+        
+        populateSelects();
+        applyAndRenderEquipe();
+        applyAndRenderClientes();
+        applyAndRenderProdutos();
+        applyAndRenderEstoque();
+        applyAndRenderProducao();
+        hideLoadingOverlay();
+    }
 
     async function fetchEquipe() {
         const result = await nocoFetch('Emaf_Equipe?nested[all]=true');
@@ -1062,45 +1064,26 @@ async function fetchAllData() {
     }
 
     // --- Funções de Navegação e UI ---
- function navigateTo(targetId) {
-    document.querySelectorAll('.page').forEach(page => page.classList.add('hidden'));
-    const targetPage = document.getElementById(targetId);
-    if (targetPage) {
-        targetPage.classList.remove('hidden');
-
-        // Chama a função de renderização correta para a página que está sendo exibida
-        switch (targetId) {
-            case 'dashboard':
-                // O timeout ajuda a garantir que a página esteja visível antes de desenhar os gráficos
-                setTimeout(updateDashboard, 50); 
-                break;
-            case 'estoque':
-                applyAndRenderEstoque();
-                break;
-            case 'producao':
-                applyAndRenderProducao();
-                break;
-            case 'equipe':
-                applyAndRenderEquipe();
-                break;
-            case 'clientes':
-                applyAndRenderClientes();
-                break;
-            case 'produtos':
-                applyAndRenderProdutos();
-                break;
+    function navigateTo(targetId) {
+        document.querySelectorAll('.page').forEach(page => page.classList.add('hidden'));
+        const targetPage = document.getElementById(targetId);
+        if (targetPage) {
+            targetPage.classList.remove('hidden');
+            // Se a página for o dashboard, atualiza os gráficos
+            if (targetId === 'dashboard') {
+                setTimeout(updateDashboard, 10); // Pequeno delay para garantir a renderização
+            }
         }
+        
+        document.querySelectorAll('.nav-link').forEach(l => {
+            l.classList.remove('bg-brand-gold', 'text-white');
+            l.classList.add('text-gray-400', 'hover:bg-brand-gold', 'hover:text-white');
+        });
+        const navLink = document.querySelector(`.nav-link[data-target="${targetId}"]`);
+        navLink?.classList.add('bg-brand-gold', 'text-white');
+        navLink?.classList.remove('text-gray-400');
+        sessionStorage.setItem('currentPage', targetId);
     }
-    
-    document.querySelectorAll('.nav-link').forEach(l => {
-        l.classList.remove('bg-brand-gold', 'text-white');
-        l.classList.add('text-gray-400', 'hover:bg-brand-gold', 'hover:text-white');
-    });
-    const navLink = document.querySelector(`.nav-link[data-target="${targetId}"]`);
-    navLink?.classList.add('bg-brand-gold', 'text-white');
-    navLink?.classList.remove('text-gray-400');
-    sessionStorage.setItem('currentPage', targetId);
-}
     
     function toggleMobileSidebar() {
         document.getElementById('sidebar').classList.toggle('-translate-x-full');
