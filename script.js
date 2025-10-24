@@ -1360,7 +1360,7 @@ function createProducaoCard(item) {
     }
     if (item.Inicio_Producao) {
         detailsHTML += `<p><i class="fas fa-industry w-4 text-gray-400"></i> Produção: <span class="font-medium text-gray-800 dark:text-gray-200">${formatTimestamp(item.Inicio_Producao)}</span></p>`;
-        detailsHTML += `<p><i class="fas fa-tag w-4 text-gray-400"></i> Lote Batelada: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Lote_Batelada || 'N/A'}</span></p>`;
+        detailsHTML += `<p><i class="fas fa-tag w-4 text-gray-400"></i> Lote Batelada2: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Lote_Batelada || 'N/A'}</span></p>`;
         detailsHTML += `<p><i class="fas fa-sun w-4 text-gray-400"></i> Turno: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Turno || 'N/A'}</span></p>`;
         detailsHTML += `<p><i class="fas fa-thermometer-half w-4 text-gray-400"></i> Estufa: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Estufa}</span> | Bandejas: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Bandeja}</span></p>`;
     }
@@ -1651,7 +1651,7 @@ function createProducaoCard(item) {
     }
     if (item.Inicio_Producao) {
         detailsHTML += `<p><i class="fas fa-industry w-4 text-gray-400"></i> Produção: <span class="font-medium text-gray-800 dark:text-gray-200">${formatTimestamp(item.Inicio_Producao)}</span></p>`;
-        detailsHTML += `<p><i class="fas fa-tag w-4 text-gray-400"></i> Lote Batelada: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Lote_Batelada || 'N/A'}</span></p>`;
+        detailsHTML += `<p><i class="fas fa-tag w-4 text-gray-400"></i> Lote Batelada3: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Lote_Batelada || 'N/A'}</span></p>`;
         detailsHTML += `<p><i class="fas fa-sun w-4 text-gray-400"></i> Turno: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Turno || 'N/A'}</span></p>`;
         detailsHTML += `<p><i class="fas fa-thermometer-half w-4 text-gray-400"></i> Estufa: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Estufa}</span> | Bandejas: <span class="font-medium text-gray-800 dark:text-gray-200">${item.Bandeja}</span></p>`;
     }
@@ -1719,13 +1719,13 @@ function renderProducaoList(data) {
     const thead = document.querySelector('#producao-list-container thead tr');
     if (thead) {
         thead.innerHTML = `
-            <th scope="col" class="px-6 py-3">Statusssss</th>
-            <th scope="col" class="px-6 py-3">Clientessss / Produto</th>
+            <th scope="col" class="px-6 py-3">Status</th>
+            <th scope="col" class="px-6 py-3">Cliente / Produto</th>
             <th scope="col" class="px-6 py-3">Lote Estoque</th>
-            <th scope="col" class="px-6 py-3">Lote Batelada</th>
+            <th scope="col" class="px-6 py-3">Lote Batelada4</th>
             <th scope="col" class="px-6 py-3">Início Preparo</th>
             <th scope="col" class="px-6 py-3">Início Produção</th>
-            <th scope="col" class="px-6 py-3">Finalizadossss</th>
+            <th scope="col" class="px-6 py-3">Finalizado</th>
             <th scope="col" class="px-6 py-3">Responsável / Turno</th>
             <th scope="col" class="px-6 py-3">Ações</th>
         `;
@@ -2205,7 +2205,7 @@ function renderProducaoList(data) {
             <th scope="col" class="px-6 py-3">Status</th>
             <th scope="col" class="px-6 py-3">Cliente / Produto</th>
             <th scope="col" class="px-6 py-3">Lote Estoque</th>
-            <th scope="col" class="px-6 py-3">Lote Batelada</th>
+            <th scope="col" class="px-6 py-3">Lote Batelada1</th>
             <th scope="col" class="px-6 py-3">Turno</th>
             <th scope="col" class="px-6 py-3">Início Preparo</th>
             <th scope="col" class="px-6 py-3">Início Produção</th>
