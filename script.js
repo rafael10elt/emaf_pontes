@@ -1959,29 +1959,27 @@ async function handleLiofilizacaoFormSubmit(e) {
     
     showLoadingOverlay('Iniciando Produção...');
     
-    // --- INÍCIO DA LÓGICA DE PREENCHIMENTO AUTOMÁTICO ---
-    const now = new Date();
-    const hour = now.getHours();
+    // --- LÓGICA DE PREENCHIMENTO AUTOMÁTICO CORRIGIDA ---
+    const inicioProducaoDate = new Date(); // Data e hora do clique no botão
+
+    // A data de referência para o TURNO é o 'Inicio_Preparo'
+    const preparoDate = new Date(activeProducaoItem.Inicio_Preparo);
+    const hour = preparoDate.getHours();
+    const minutes = preparoDate.getMinutes();
 
     let turno = 'Indefinido';
     // Lógica para turno Noturno (19:00 de um dia até 04:48 do dia seguinte)
-    if (hour >= 19 || hour < 5) { // Cobre de 19:00 até 04:59
-        if (hour === 4 && now.getMinutes() > 48) {
-            turno = 'Diurno'; // Já passou das 04:48
-        } else {
-            turno = 'Noturno';
-        }
-    } else if (hour >= 7 && hour < 17) { // Cobre de 07:00 até 16:59
-        if (hour === 16 && now.getMinutes() > 48) {
-             turno = 'Indefinido'; // Intervalo
-        } else {
-            turno = 'Diurno';
-        }
+    if (hour >= 19 || hour < 4 || (hour === 4 && minutes <= 48)) {
+        turno = 'Noturno';
+    } 
+    // Lógica para turno Diurno (07:00 até 16:48)
+    else if (hour >= 7 && (hour < 16 || (hour === 16 && minutes <= 48))) {
+        turno = 'Diurno';
     }
     
-    // Formatação do Lote_Batelada: DDMMYY/HH:mm-Estufa
-    const datePart = now.toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit' }).replace(/\//g, '');
-    const timePart = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    // O Lote_Batelada continua usando a data/hora atual (Início da Produção)
+    const datePart = inicioProducaoDate.toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit' }).replace(/\//g, '');
+    const timePart = inicioProducaoDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const loteBatelada = `${datePart}/${timePart}-${estufa}`;
     // --- FIM DA LÓGICA ---
 
@@ -1989,9 +1987,9 @@ async function handleLiofilizacaoFormSubmit(e) {
         Estufa: estufa,
         Bandeja: bandeja,
         Status: 'Em Produção',
-        Inicio_Producao: now.toISOString(),
-        Turno: turno,                  // <-- NOVO CAMPO ADICIONADO
-        Lote_Batelada: loteBatelada    // <-- NOVO CAMPO ADICIONADO
+        Inicio_Producao: inicioProducaoDate.toISOString(),
+        Turno: turno,                  
+        Lote_Batelada: loteBatelada    
     };
     
     const result = await nocoFetch(`${TABLE_NAME_MAP.producao}/${activeProducaoItem.Id}`, {
@@ -2005,6 +2003,81 @@ async function handleLiofilizacaoFormSubmit(e) {
     }
     
     hideLoadingOverlay();
+}
+Ação 2: Corrigir a Renderização da Tabela (renderProducaoList)
+Substitua sua função renderProducaoList por esta versão com a ordem correta das colunas.
+code
+JavaScript
+// ======================= SUBSTITUA A FUNÇÃO ANTIGA POR ESTA =======================
+function renderProducaoList(data) {
+    const tbody = document.getElementById('producao-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const getStatusClass = (status) => {
+        switch (status) {
+            case 'Pré-preparo': return 'bg-gray-200 text-gray-800';
+            case 'Em Produção': return 'bg-yellow-200 text-yellow-800';
+            case 'Finalizado': return 'bg-green-200 text-green-800';
+            default: return 'bg-gray-200 text-gray-800';
+        }
+    };
+
+    const statusPriority = {
+        'Pré-preparo': 1,
+        'Em Produção': 2,
+        'Finalizado': 3
+    };
+
+    const sortedData = [...data].sort((a, b) => {
+        const priorityA = statusPriority[a.Status] || 99;
+        const priorityB = statusPriority[b.Status] || 99;
+        if (priorityA !== priorityB) {
+            return priorityA - priorityB;
+        }
+
+        switch (a.Status) {
+            case 'Pré-preparo':
+                return new Date(a.Inicio_Preparo) - new Date(b.Inicio_Preparo);
+            case 'Em Produção':
+                return new Date(a.Inicio_Producao) - new Date(b.Inicio_Producao);
+            case 'Finalizado':
+                return new Date(b.Finalizado) - new Date(a.Finalizado);
+            default:
+                return 0;
+        }
+    });
+
+    if (sortedData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-gray-500">Nenhum registro encontrado para os filtros selecionados.</td></tr>`;
+        return;
+    }
+
+    sortedData.forEach(item => {
+        let actionsHTML = `<button class="action-btn text-gray-500" data-action="details" data-type="producao" title="Ver Detalhes"><i class="fas fa-eye"></i></button>`;
+        if (item.Status === 'Pré-preparo') {
+            actionsHTML += `
+                <button class="action-btn-producao-crud text-blue-500" data-action="edit" data-id="${item.Id}" title="Editar"><i class="fas fa-edit"></i></button>
+                <button class="action-btn-producao-crud text-red-500" data-action="delete" data-id="${item.Id}" title="Apagar"><i class="fas fa-trash"></i></button>
+            `;
+        }
+
+        tbody.innerHTML += `
+            <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700" data-id="${item.Id}" data-type="producao">
+                <td class="px-6 py-4"><span class="text-xs font-semibold px-2 py-0.5 rounded-full ${getStatusClass(item.Status)}">${item.Status}</span></td>
+                <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">
+                    ${item.Emaf_Clientes?.Cliente || 'N/A'}<br>
+                    <span class="text-xs text-gray-500">${item.Emaf_Produto?.Produto || 'N/A'}</span>
+                </td>
+                <td class="px-6 py-4">${item.Emaf_Estoque?.Lote || 'N/A'}</td>
+                <td class="px-6 py-4">${formatTimestamp(item.Inicio_Preparo)}</td>
+                <td class="px-6 py-4">${formatTimestamp(item.Inicio_Producao)}</td>
+                <td class="px-6 py-4">${formatTimestamp(item.Finalizado)}</td>
+                <td class="px-6 py-4">${item.Emaf_Equipe?.Nome || 'N/A'}</td>
+                <td class="px-6 py-4 space-x-2">${actionsHTML}</td>
+            </tr>
+        `;
+    });
 }
 
 async function setupProducaoFormForEdit(item) {
