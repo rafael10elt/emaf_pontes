@@ -2013,7 +2013,8 @@ async function handleProducaoFormSubmit(e) {
     const id = form.querySelector('#producao-Id').value;
     const method = id ? 'PATCH' : 'POST';
 
-    if (!activeLoteProducao) {
+    // Validação do Lote
+    if (!activeLoteProducao && !id) { // Só valida no modo de criação
         alert("Erro: Nenhum lote de origem válido foi selecionado. Por favor, verifique o cliente e o produto.");
         return;
     }
@@ -2026,7 +2027,8 @@ async function handleProducaoFormSubmit(e) {
         alert("Por favor, insira uma quantidade de insumo válida.");
         return;
     }
-
+    
+    // Para edição, o saldo disponível é o saldo atual + o que este próprio item já consumiu
     const saldoDisponivel = id ? (activeLoteProducao.saldo + activeProducaoItem.Qtde_Insumo) : activeLoteProducao.saldo;
     
     if (qtdeInsumo > saldoDisponivel) {
@@ -2036,24 +2038,19 @@ async function handleProducaoFormSubmit(e) {
 
     showLoadingOverlay(id ? 'Atualizando...' : 'Criando...');
     
-    let body = {
+    const body = {
+        Emaf_Clientes_id: parseInt(form.querySelector('#producao-Cliente').value),
+        Emaf_Produto_id: parseInt(form.querySelector('#producao-Produto').value),
+        Emaf_Equipe_id: parseInt(form.querySelector('#producao-Equipe').value),
+        Emaf_Estoque_id: activeLoteProducao.Id,
         Qtde_Insumo: qtdeInsumo,
         Observacao: form.querySelector('#producao-Observacao').value,
     };
     
-    // NocoDB usa formatos diferentes para POST (criar) e PATCH (atualizar) relacionamentos
-    if (method === 'POST') {
-        body.Emaf_Clientes = { Id: parseInt(form.querySelector('#producao-Cliente').value) };
-        body.Emaf_Produto = { Id: parseInt(form.querySelector('#producao-Produto').value) };
-        body.Emaf_Equipe = { Id: parseInt(form.querySelector('#producao-Equipe').value) };
-        body.Emaf_Estoque = { Id: activeLoteProducao.Id };
+    // Adiciona campos apenas na criação
+    if (!id) {
         body.Status = 'Pré-preparo';
         body.Inicio_Preparo = new Date().toISOString();
-    } else { // PATCH
-        body.Emaf_Clientes_id = parseInt(form.querySelector('#producao-Cliente').value);
-        body.Emaf_Produto_id = parseInt(form.querySelector('#producao-Produto').value);
-        body.Emaf_Equipe_id = parseInt(form.querySelector('#producao-Equipe').value);
-        body.Emaf_Estoque_id = activeLoteProducao.Id;
     }
 
     const endpoint = id ? `${TABLE_NAME_MAP.producao}/${id}` : TABLE_NAME_MAP.producao;
@@ -2068,6 +2065,8 @@ async function handleProducaoFormSubmit(e) {
         await checkAndFinalizeLote(activeLoteProducao.Id);
         await fetchAllData();
         
+
+        // Esta linha força a atualização da tela de produção (Kanban ou Lista)
         applyAndRenderProducao(); 
     }
     
