@@ -1596,7 +1596,7 @@ function renderProducaoList(data) {
     });
 
     if (sortedData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-gray-500">Nenhum registro encontrado para os filtros selecionados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-gray-500">Nenhum registro encontrado para os filtros selecionados.</td></tr>`;
         return;
     }
 
@@ -1609,10 +1609,9 @@ function renderProducaoList(data) {
             `;
         }
 
-        // --- ORDEM DAS COLUNAS CORRIGIDA AQUI ---
         tbody.innerHTML += `
             <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700" data-id="${item.Id}" data-type="producao">
-                <td class="px-6 py-4"><span class="text-xs font-semibold px-2 py-0.5 rounded-full ${getStatusClass(item.Status)}">${item.Status}</span></td>
+                <td class="px-6 py-4"><span class="text-xs font-semibold px-2 py-0.5 rounded-full ${getStatusClass(item.Status)}">${item.Status || 'N/A'}</span></td>
                 <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">
                     ${item.Emaf_Clientes?.Cliente || 'N/A'}<br>
                     <span class="text-xs text-gray-500">${item.Emaf_Produto?.Produto || 'N/A'}</span>
