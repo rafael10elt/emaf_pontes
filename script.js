@@ -1630,7 +1630,6 @@ function renderProducaoList(data) {
 }
     // --- Manipulação de Formulários e Modais ---
     
-    // **NOVA FUNÇÃO ADICIONADA**
     // Função para controlar a visibilidade da lista e do formulário
     function setupFormAndListVisibility(type, showForm) {
         const listContainer = document.getElementById(`${type}-list-container`);
