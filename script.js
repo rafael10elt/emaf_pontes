@@ -2113,15 +2113,15 @@ async function handleLiofilizacaoFormSubmit(e) {
     const hour = preparoDate.getHours();
     const minutes = preparoDate.getMinutes();
 
-    let turno = 'Indefinido';
-    // Lógica para turno Noturno (19:00 de um dia até 04:48 do dia seguinte)
-    if (hour >= 19 || hour < 4 || (hour === 4 && minutes <= 48)) {
-        turno = 'Noturno';
-    } 
-    // Lógica para turno Diurno (07:00 até 16:48)
-    else if (hour >= 7 && (hour < 16 || (hour === 16 && minutes <= 48))) {
-        turno = 'Diurno';
-    }
+    let turno; // Não precisa mais de valor inicial
+// Lógica para turno Noturno (18:00 de um dia até 04:59 do dia seguinte)
+if (hour >= 18 || hour < 5) { // Simplificado: tudo entre 18h e 04:59 é noturno
+    turno = 'Noturno';
+} 
+// Todo o resto é considerado Diurno
+else {
+    turno = 'Diurno';
+}
     
     // O Lote_Batelada continua usando a data/hora atual (Início da Produção)
     const datePart = inicioProducaoDate.toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit' }).replace(/\//g, '');
