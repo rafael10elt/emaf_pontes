@@ -689,7 +689,7 @@ function updateProducaoKPIs(data) {
     document.getElementById('kpi-prod-tempo-ciclo').textContent = `${avgHours}h ${avgMinutes}m`;
 
     // Pedidos em Andamento (WIP)
-    const wip = data.filter(d => d.Status === 'Pré-preparo' || d.Status === 'Em Produção').length;
+    const wip = data.filter(d => d.Status === 'Pré-preparo' || d.Status === 'Em Liofilização').length;
     document.getElementById('kpi-prod-wip').textContent = wip;
 }
 
@@ -769,11 +769,11 @@ function updateEficienciaProdutoChart(data) {
 
 function updateGargaloWipChart(data) {
     const ctx = document.getElementById('gargalo-wip-chart').getContext('2d');
-    const wip = data.filter(d => d.Status === 'Pré-preparo' || d.Status === 'Em Produção');
+    const wip = data.filter(d => d.Status === 'Pré-preparo' || d.Status === 'Em Liofilização');
     
     const counts = {
         'Pré-preparo': wip.filter(d => d.Status === 'Pré-preparo').length,
-        'Em Produção': wip.filter(d => d.Status === 'Em Produção').length,
+        'Em Liofilização': wip.filter(d => d.Status === 'Em Liofilização').length,
     };
     
     const chartData = {
@@ -1379,9 +1379,9 @@ function createProducaoCard(item) {
     // --- Lógica dos Botões de Ação (Avançar Etapa) ---
     if (item.Status === 'Pré-preparo') {
         actionButtonHTML = `<button class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition-colors action-btn-producao" data-action="start-liofilizacao" data-id="${item.Id}">
-                                <i class="fas fa-industry mr-2"></i>Iniciar Produção
+                                <i class="fas fa-industry mr-2"></i>Carregar Estufa
                             </button>`;
-    } else if (item.Status === 'Em Produção') { 
+    } else if (item.Status === 'Em Liofilização') { 
         actionButtonHTML = `<button class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition-colors action-btn-producao" data-action="finish-producao" data-id="${item.Id}">
                                 <i class="fas fa-check-circle mr-2"></i>Finalizar Produção
                             </button>`;
@@ -1518,14 +1518,14 @@ function renderProducaoKanban(data) {
 
     // 1. SEPARAR os dados por status
     const preparoItems = data.filter(item => item.Status === 'Pré-preparo');
-    const producaoItems = data.filter(item => item.Status === 'Em Produção');
+    const producaoItems = data.filter(item => item.Status === 'Em Liofilização');
     const finalizadoItems = data.filter(item => item.Status === 'Finalizado');
 
     // 2. ORDENAR cada lista de acordo com suas regras específicas
     // Pré-preparo: Do mais antigo para o mais novo (ascendente)
     preparoItems.sort((a, b) => new Date(a.Inicio_Preparo) - new Date(b.Inicio_Preparo));
     
-    // Em Produção: Do mais antigo para o mais novo (ascendente)
+    // Em Liofilização: Do mais antigo para o mais novo (ascendente)
     producaoItems.sort((a, b) => new Date(a.Inicio_Producao) - new Date(b.Inicio_Producao));
 
     // Finalizado: Do mais novo para o mais antigo (descendente)
@@ -1634,7 +1634,7 @@ function generateProducaoPDF() {
     } else if (status) {
         drawTableForGroup(filteredData, `Status: ${status}`);
     } else {
-        const statuses = ['Pré-preparo', 'Em Produção', 'Finalizado'];
+        const statuses = ['Pré-preparo', 'Em Liofilização', 'Finalizado'];
         statuses.forEach(s => {
             const dataByStatus = filteredData.filter(item => item.Status === s);
             if (dataByStatus.length > 0) {
@@ -1669,9 +1669,9 @@ function createProducaoCard(item) {
     // --- Lógica dos Botões de Ação ---
     if (item.Status === 'Pré-preparo') {
         actionButtonHTML = `<button class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition-colors action-btn-producao" data-action="start-liofilizacao" data-id="${item.Id}">
-                                <i class="fas fa-industry mr-2"></i>Iniciar Produção
+                                <i class="fas fa-industry mr-2"></i>Carregar Estufa
                             </button>`;
-    } else if (item.Status === 'Em Produção') { 
+    } else if (item.Status === 'Em Liofilização') { 
         actionButtonHTML = `<button class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition-colors action-btn-producao" data-action="finish-producao" data-id="${item.Id}">
                                 <i class="fas fa-check-circle mr-2"></i>Finalizar Produção
                             </button>`;
@@ -1741,13 +1741,13 @@ function renderProducaoList(data) {
     const getStatusClass = (status) => {
         switch (status) {
             case 'Pré-preparo': return 'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-100';
-            case 'Em Produção': return 'bg-yellow-200 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100';
+            case 'Em Liofilização': return 'bg-yellow-200 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100';
             case 'Finalizado': return 'bg-green-200 text-green-800 dark:bg-green-700 dark:text-green-100';
             default: return 'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-100';
         }
     };
 
-    const statusPriority = { 'Pré-preparo': 1, 'Em Produção': 2, 'Finalizado': 3 };
+    const statusPriority = { 'Pré-preparo': 1, 'Em Liofilização': 2, 'Finalizado': 3 };
 
     const sortedData = [...data].sort((a, b) => {
         const priorityA = statusPriority[a.Status] || 99;
@@ -1755,7 +1755,7 @@ function renderProducaoList(data) {
         if (priorityA !== priorityB) return priorityA - priorityB;
         switch (a.Status) {
             case 'Pré-preparo': return (a.Inicio_Preparo && b.Inicio_Preparo) ? new Date(a.Inicio_Preparo) - new Date(b.Inicio_Preparo) : 0;
-            case 'Em Produção': return (a.Inicio_Producao && b.Inicio_Producao) ? new Date(a.Inicio_Producao) - new Date(b.Inicio_Producao) : 0;
+            case 'Em Liofilização': return (a.Inicio_Producao && b.Inicio_Producao) ? new Date(a.Inicio_Producao) - new Date(b.Inicio_Producao) : 0;
             case 'Finalizado': return (a.Finalizado && b.Finalizado) ? new Date(b.Finalizado) - new Date(a.Finalizado) : 0;
             default: return 0;
         }
@@ -2094,7 +2094,7 @@ async function handleLiofilizacaoFormSubmit(e) {
     const body = {
         Estufa: estufa,
         Bandeja: bandeja,
-        Status: 'Em Produção',
+        Status: 'Em Liofilização',
         Inicio_Producao: inicioProducaoDate.toISOString(),
         Lote_Batelada: loteBatelada
         // Não precisamos mais definir o Turno aqui, pois ele já foi salvo na criação.
@@ -2519,7 +2519,7 @@ function setupEventListeners() {
 
             if (action === 'start-liofilizacao') {
                 const estufasOcupadas = producaoData
-                    .filter(p => p.Status === 'Em Produção' && p.Estufa)
+                    .filter(p => p.Status === 'Em Liofilização' && p.Estufa)
                     .map(p => p.Estufa);
 
                 const estufasDisponiveis = TODAS_ESTUFAS.filter(e => !estufasOcupadas.includes(e));

@@ -188,7 +188,7 @@
     <div><label for="filter-producao-lote" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Lote Batelada</label><input type="text" id="filter-producao-lote" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="Buscar lote..."></div>
     <div><label for="filter-producao-responsavel" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Responsável</label><select id="filter-producao-responsavel" class="producao-filter equipe-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select></div>
     <div><label for="filter-producao-estufa" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Estufa</label><select id="filter-producao-estufa" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option value="">Todas</option><option value="A">Estufa A</option><option value="B">Estufa B</option><option value="C">Estufa C</option><option value="D">Estufa D</option></select></div>
-    <div><label for="filter-producao-status" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Status</label><select id="filter-producao-status" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option value="">Todos</option><option value="Pré-preparo">Pré-preparo</option><option value="Em Produção">Em Produção</option><option value="Finalizado">Finalizado</option></select></div>
+    <div><label for="filter-producao-status" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Status</label><select id="filter-producao-status" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option value="">Todos</option><option value="Pré-preparo">Pré-preparo</option><option value="Em Liofilização">Em Liofilização</option><option value="Finalizado">Finalizado</option></select></div>
     <div><label for="filter-producao-turno" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Turno</label><select id="filter-producao-turno" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option value="">Todos</option><option value="Diurno">Diurno</option><option value="Noturno">Noturno</option></select></div>
     
     <div class="xl:col-start-7 xl:col-span-2 flex justify-end items-end space-x-4 pt-4 xl:pt-0">
@@ -210,10 +210,10 @@
                 </div>
                 <div id="kanban-column-preparo" class="flex-1 space-y-4 overflow-y-auto"></div>
             </div>
-            <!-- Coluna 2: Em Produção -->
+            <!-- Coluna 2: Em Liofilização -->
             <div class="flex flex-col bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-bold text-lg text-gray-700 dark:text-gray-200">Em Produção</h3>
+                    <h3 class="font-bold text-lg text-gray-700 dark:text-gray-200">Em Liofilização</h3>
                     <span id="count-producao" class="bg-yellow-300 dark:bg-yellow-600 text-yellow-800 dark:text-yellow-100 text-xs font-semibold px-2 py-1 rounded-full">0</span>
                 </div>
                 <div id="kanban-column-producao" class="flex-1 space-y-4 overflow-y-auto"></div>
