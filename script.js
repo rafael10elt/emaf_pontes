@@ -80,7 +80,7 @@ const charts = {
         createdat: 'Criado em',
         updatedat: 'Alterado em',
         qtde_insumo: 'Qtd. Insumo (Kg)',
-    qtde_final: 'Qtd. Final (Kg)',
+    qtde_final: 'Rendimento (kg)',
     lote_origem: 'Lote da Matéria-Prima',
     inicio_preparo: 'Início do Preparo',
     inicio_producao: 'Início da Produção',
@@ -1387,7 +1387,7 @@ function createProducaoCard(item) {
                             </button>`;
     } else if (item.Status === 'Finalizado' && (!item.Qtde_Final || item.Qtde_Final <= 0)) {
         actionButtonHTML = `<button class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors action-btn-producao" data-action="add-qtd-final" data-id="${item.Id}">
-                                <i class="fas fa-balance-scale-right mr-2"></i>Informar Qtd. Final
+                                <i class="fas fa-balance-scale-right mr-2"></i>Informar Rendimento (kg)
                             </button>`;
     }
 
@@ -1414,7 +1414,7 @@ function createProducaoCard(item) {
         detailsHTML += `<p><i class="fas fa-hourglass-half w-4 text-gray-400"></i> Duração Total: <span class="font-bold text-blue-500">${calculateDuration(item.Inicio_Preparo, item.Finalizado)}</span></p>`;
         
         if (item.Qtde_Final > 0) {
-             detailsHTML += `<p><i class="fas fa-balance-scale-right w-4 text-gray-400"></i> Qtd. Final: <span class="font-bold text-green-600 dark:text-green-400">${formatQuantity(item.Qtde_Final)} Kg</span></p>`;
+             detailsHTML += `<p><i class="fas fa-balance-scale-right w-4 text-gray-400"></i> Rendimento(KG): <span class="font-bold text-green-600 dark:text-green-400">${formatQuantity(item.Qtde_Final)} Kg</span></p>`;
         } else {
              detailsHTML += `<p class="text-yellow-600 dark:text-yellow-400 font-semibold mt-2"><i class="fas fa-exclamation-triangle w-4"></i> Pendente: Informar Quantidade Final</p>`;
         }
@@ -1678,7 +1678,7 @@ function createProducaoCard(item) {
     } else if (item.Status === 'Finalizado' && (!item.Qtde_Final || item.Qtde_Final <= 0)) {
         // Botão para adicionar a quantidade final, se pendente
         actionButtonHTML = `<button class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors action-btn-producao" data-action="add-qtd-final" data-id="${item.Id}">
-                                <i class="fas fa-balance-scale-right mr-2"></i>Informar Qtd. Final
+                                <i class="fas fa-balance-scale-right mr-2"></i>Informar Rendimento (kg)
                             </button>`;
     }
 
@@ -1706,7 +1706,7 @@ function createProducaoCard(item) {
         
         // Exibe a quantidade final ou o status de pendente
         if (item.Qtde_Final > 0) {
-             detailsHTML += `<p><i class="fas fa-balance-scale-right w-4 text-gray-400"></i> Qtd. Final: <span class="font-bold text-green-600 dark:text-green-400">${formatQuantity(item.Qtde_Final)} Kg</span></p>`;
+             detailsHTML += `<p><i class="fas fa-balance-scale-right w-4 text-gray-400"></i> Rendimento (kg): <span class="font-bold text-green-600 dark:text-green-400">${formatQuantity(item.Qtde_Final)} Kg</span></p>`;
         } else {
              detailsHTML += `<p class="text-yellow-600 dark:text-yellow-400 font-semibold mt-2"><i class="fas fa-exclamation-triangle w-4"></i> Pendente: Informar Quantidade Final</p>`;
         }
@@ -2579,7 +2579,7 @@ function setupEventListeners() {
                 const title = document.getElementById('qtd-final-modal-title');
                 const form = document.getElementById('qtd-final-form');
                 
-                title.textContent = `Informar Qtd. Final (#${String(activeProducaoItem.Id).padStart(4, '0')})`;
+                title.textContent = `Informar Rendimento (kg) (#${String(activeProducaoItem.Id).padStart(4, '0')})`;
                 form.reset();
 
                 showModal(modal);
