@@ -689,7 +689,7 @@ function updateProducaoKPIs(data) {
     document.getElementById('kpi-prod-tempo-ciclo').textContent = `${avgHours}h ${avgMinutes}m`;
 
     // Pedidos em Andamento (WIP)
-    const wip = data.filter(d => d.Status === 'Pré-preparo' || d.Status === 'Em Liofilização').length;
+    const wip = data.filter(d => d.Status === 'Processamento' || d.Status === 'Em Liofilização').length;
     document.getElementById('kpi-prod-wip').textContent = wip;
 }
 
@@ -769,10 +769,10 @@ function updateEficienciaProdutoChart(data) {
 
 function updateGargaloWipChart(data) {
     const ctx = document.getElementById('gargalo-wip-chart').getContext('2d');
-    const wip = data.filter(d => d.Status === 'Pré-preparo' || d.Status === 'Em Liofilização');
+    const wip = data.filter(d => d.Status === 'Processamento' || d.Status === 'Em Liofilização');
     
     const counts = {
-        'Pré-preparo': wip.filter(d => d.Status === 'Pré-preparo').length,
+        'Processamento': wip.filter(d => d.Status === 'Processamento').length,
         'Em Liofilização': wip.filter(d => d.Status === 'Em Liofilização').length,
     };
     
@@ -1377,7 +1377,7 @@ function createProducaoCard(item) {
     const canManageProducao = ['Admin', 'Gestão'].includes(loggedInUser.Role);
 
     // --- Lógica dos Botões de Ação (Avançar Etapa) ---
-    if (item.Status === 'Pré-preparo') {
+    if (item.Status === 'Processamento') {
         actionButtonHTML = `<button class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition-colors action-btn-producao" data-action="start-liofilizacao" data-id="${item.Id}">
                                 <i class="fas fa-industry mr-2"></i>Carregar Estufa
                             </button>`;
@@ -1392,7 +1392,7 @@ function createProducaoCard(item) {
     }
 
     // --- Lógica dos Botões CRUD (Editar/Apagar) com base na permissão ---
-    if (canManageProducao && item.Status === 'Pré-preparo') {
+    if (canManageProducao && item.Status === 'Processamento') {
         crudButtonsHTML = `
             <button class="action-btn-producao-crud text-blue-500 hover:text-blue-700" data-action="edit" data-id="${item.Id}" title="Editar"><i class="fas fa-edit"></i></button>
             <button class="action-btn-producao-crud text-red-500 hover:text-red-700" data-action="delete" data-id="${item.Id}" title="Apagar"><i class="fas fa-trash"></i></button>
@@ -1517,12 +1517,12 @@ function renderProducaoKanban(data) {
     Object.values(columns).forEach(col => col.innerHTML = '');
 
     // 1. SEPARAR os dados por status
-    const preparoItems = data.filter(item => item.Status === 'Pré-preparo');
+    const preparoItems = data.filter(item => item.Status === 'Processamento');
     const producaoItems = data.filter(item => item.Status === 'Em Liofilização');
     const finalizadoItems = data.filter(item => item.Status === 'Finalizado');
 
     // 2. ORDENAR cada lista de acordo com suas regras específicas
-    // Pré-preparo: Do mais antigo para o mais novo (ascendente)
+    // Processamento: Do mais antigo para o mais novo (ascendente)
     preparoItems.sort((a, b) => new Date(a.Inicio_Preparo) - new Date(b.Inicio_Preparo));
     
     // Em Liofilização: Do mais antigo para o mais novo (ascendente)
@@ -1634,7 +1634,7 @@ function generateProducaoPDF() {
     } else if (status) {
         drawTableForGroup(filteredData, `Status: ${status}`);
     } else {
-        const statuses = ['Pré-preparo', 'Em Liofilização', 'Finalizado'];
+        const statuses = ['Processamento', 'Em Liofilização', 'Finalizado'];
         statuses.forEach(s => {
             const dataByStatus = filteredData.filter(item => item.Status === s);
             if (dataByStatus.length > 0) {
@@ -1667,7 +1667,7 @@ function createProducaoCard(item) {
     let detailsHTML = ''; // Variável para os detalhes incrementais
 
     // --- Lógica dos Botões de Ação ---
-    if (item.Status === 'Pré-preparo') {
+    if (item.Status === 'Processamento') {
         actionButtonHTML = `<button class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition-colors action-btn-producao" data-action="start-liofilizacao" data-id="${item.Id}">
                                 <i class="fas fa-industry mr-2"></i>Carregar Estufa
                             </button>`;
@@ -1683,7 +1683,7 @@ function createProducaoCard(item) {
     }
 
     // --- Lógica dos Botões CRUD (Editar/Apagar) ---
-    if (item.Status === 'Pré-preparo') {
+    if (item.Status === 'Processamento') {
         crudButtonsHTML = `
             <button class="action-btn-producao-crud text-blue-500 hover:text-blue-700" data-action="edit" data-id="${item.Id}" title="Editar"><i class="fas fa-edit"></i></button>
             <button class="action-btn-producao-crud text-red-500 hover:text-red-700" data-action="delete" data-id="${item.Id}" title="Apagar"><i class="fas fa-trash"></i></button>
@@ -1740,21 +1740,21 @@ function renderProducaoList(data) {
 
     const getStatusClass = (status) => {
         switch (status) {
-            case 'Pré-preparo': return 'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-100';
+            case 'Processamento': return 'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-100';
             case 'Em Liofilização': return 'bg-yellow-200 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100';
             case 'Finalizado': return 'bg-green-200 text-green-800 dark:bg-green-700 dark:text-green-100';
             default: return 'bg-gray-200 text-gray-800 dark:bg-gray-600 dark:text-gray-100';
         }
     };
 
-    const statusPriority = { 'Pré-preparo': 1, 'Em Liofilização': 2, 'Finalizado': 3 };
+    const statusPriority = { 'Processamento': 1, 'Em Liofilização': 2, 'Finalizado': 3 };
 
     const sortedData = [...data].sort((a, b) => {
         const priorityA = statusPriority[a.Status] || 99;
         const priorityB = statusPriority[b.Status] || 99;
         if (priorityA !== priorityB) return priorityA - priorityB;
         switch (a.Status) {
-            case 'Pré-preparo': return (a.Inicio_Preparo && b.Inicio_Preparo) ? new Date(a.Inicio_Preparo) - new Date(b.Inicio_Preparo) : 0;
+            case 'Processamento': return (a.Inicio_Preparo && b.Inicio_Preparo) ? new Date(a.Inicio_Preparo) - new Date(b.Inicio_Preparo) : 0;
             case 'Em Liofilização': return (a.Inicio_Producao && b.Inicio_Producao) ? new Date(a.Inicio_Producao) - new Date(b.Inicio_Producao) : 0;
             case 'Finalizado': return (a.Finalizado && b.Finalizado) ? new Date(b.Finalizado) - new Date(a.Finalizado) : 0;
             default: return 0;
@@ -1787,8 +1787,8 @@ function renderProducaoList(data) {
     sortedData.forEach(item => {
         let actionsHTML = `<button class="action-btn text-gray-500" data-action="details" data-type="producao" title="Ver Detalhes"><i class="fas fa-eye"></i></button>`;
         
-        // Permite editar/excluir apenas se estiver em Pré-preparo e tiver a permissão
-        if (item.Status === 'Pré-preparo' && canManageProducao) {
+        // Permite editar/excluir apenas se estiver em Processamento e tiver a permissão
+        if (item.Status === 'Processamento' && canManageProducao) {
             actionsHTML += `
                 <button class="action-btn-producao-crud text-blue-500" data-action="edit" data-id="${item.Id}" title="Editar"><i class="fas fa-edit"></i></button>
                 <button class="action-btn-producao-crud text-red-500" data-action="delete" data-id="${item.Id}" title="Apagar"><i class="fas fa-trash"></i></button>
@@ -2201,7 +2201,7 @@ async function handleProducaoFormSubmit(e) {
         body.Emaf_Produto = { Id: parseInt(form.querySelector('#producao-Produto').value) };
         body.Emaf_Equipe = { Id: parseInt(form.querySelector('#producao-Equipe').value) };
         body.Emaf_Estoque = { Id: activeLoteProducao.Id };
-        body.Status = 'Pré-preparo';
+        body.Status = 'Processamento';
         body.Inicio_Preparo = nowISO; // Usa a data/hora atual para o início do preparo
         body.Turno = getTurno(nowISO); // <<<---- AQUI É A MUDANÇA PRINCIPAL
     } else { // PATCH
