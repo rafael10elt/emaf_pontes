@@ -81,7 +81,7 @@ const charts = {
         updatedat: 'Alterado em',
         qtde_insumo: 'Qtd. Insumo (Kg)',
     qtde_final: 'Qtd. Final (Kg)',
-    lote_origem: 'Lote de Origem',
+    lote_origem: 'Lote da Matéria-Prima',
     inicio_preparo: 'Início do Preparo',
     inicio_producao: 'Início da Produção',
     finalizado: 'Finalizado em',
@@ -2166,7 +2166,7 @@ async function handleProducaoFormSubmit(e) {
     const method = id ? 'PATCH' : 'POST';
 
     if (!activeLoteProducao) {
-        alert("Erro: Nenhum lote de origem válido foi selecionado. Por favor, verifique o cliente e o produto.");
+        alert("Erro: Nenhum lote de Matéria-Prima válido foi selecionado. Por favor, verifique o cliente e o produto.");
         return;
     }
 
