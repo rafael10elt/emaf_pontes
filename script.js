@@ -1878,26 +1878,13 @@ function setupForm(type, id = null) {
     
     const item = id ? { equipe: equipeData, clientes: clientesData, produtos: produtosData, estoque: estoqueData }[type].find(d => d.Id == id) : null;
 
-    // --- LÓGICA DE CONTAINER DINÂMICO ---
+// --- LÓGICA DE CONTAINER (SEM TRAVA) ---
     if (type === 'estoque') {
         const containerSelect = form.querySelector('#estoque-Container');
         
-        // 1. Encontra todos os containers em uso (associados a um lote ativo)
-        const occupiedContainers = estoqueData
-            .filter(e => e.Status_Lote === 'Ativo')
-            .map(e => e.Container);
-        
-        // 2. Encontra o container do item que está sendo editado (se houver)
-        const currentContainer = item ? item.Container : null;
-        
-        // 3. Gera a lista de containers disponíveis
-        const availableContainers = TODOS_CONTAINERS.filter(c => 
-            !occupiedContainers.includes(c) || c === currentContainer || c === 'In Natura'
-        );
-
-        // 4. Popula o select com as opções disponíveis
+        // Popula o select com TODOS os containers disponíveis, sem filtrar os ocupados
         let optionsHTML = '<option value="">Selecione</option>';
-        availableContainers.forEach(c => {
+        TODOS_CONTAINERS.forEach(c => {
             optionsHTML += `<option value="${c}">${c}</option>`;
         });
         containerSelect.innerHTML = optionsHTML;
