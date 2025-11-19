@@ -1323,6 +1323,19 @@ function renderEstoque(data) {
         const statusClass = getStatusClass(item.Status);
         const dataFormatada = item.Data ? new Date(item.Data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short'}) : 'N/A';
         
+        // Calcular Saldo
+        // Filtra os registros de produção que usaram este lote específico de estoque
+        const consumos = producaoData.filter(p => p.Emaf_Estoque && p.Emaf_Estoque.Id === item.Id);
+        // Soma a quantidade de insumo utilizada em todas as produções
+        const totalConsumido = consumos.reduce((sum, prod) => sum + (prod.Qtde_Insumo || 0), 0);
+        // Calcula o saldo
+        const saldo = (item.Quantidade || 0) - totalConsumido;
+        
+        // Define uma cor para o saldo (opcional, mas útil visualmente)
+        let saldoClass = 'text-gray-900 dark:text-white';
+        if (saldo <= 0) saldoClass = 'text-red-600 dark:text-red-400 font-bold';
+        else if (saldo < (item.Quantidade * 0.2)) saldoClass = 'text-yellow-600 dark:text-yellow-400 font-bold'; // Alerta de estoque baixo (< 20%)
+
         // A lógica de construção dos botões agora usa a nova variável 'canManageEstoque'
         const actionsHTML = `
             <button class="action-btn text-gray-500" data-action="details" title="Ver Detalhes"><i class="fas fa-eye"></i></button>
@@ -1341,12 +1354,12 @@ function renderEstoque(data) {
                 <td class="px-6 py-4">${item.Emaf_Produto?.Produto || 'N/A'}</td>
                 <td class="px-6 py-4">${item.Lote || 'N/A'}</td>
                 <td class="px-6 py-4">${item.Container || 'N/A'}</td>
-                <td class="px-6 py-4">${formatQuantity(item.Quantidade)}</td>
-                <td class="px-6 py-4"><span class="text-xs font-semibold px-2 py-0.5 rounded-full ${statusClass}">${item.Status}</span></td>
-                <td class="px-6 py-4 space-x-2">${actionsHTML}</td>
+                <td class="px-6 py-4 text-right">${formatQuantity(item.Quantidade)}</td>
+                <td class="px-6 py-4 text-right ${saldoClass}">${formatQuantity(saldo)}</td> <td class="px-6 py-4"><span class="text-xs font-semibold px-2 py-0.5 rounded-full ${statusClass}">${item.Status}</span></td>
+                <td class="px-6 py-4 space-x-2 text-center">${actionsHTML}</td>
             </tr>`;
 
-        // Cards
+        // Cards (Atualizando também o card para mostrar o saldo)
         cardsContainer.innerHTML += `
             <div class="p-4 bg-white rounded-lg shadow dark:bg-gray-800 border dark:border-gray-700" data-id="${item.Id}" data-type="estoque">
                 <div class="flex justify-between items-start">
@@ -1360,12 +1373,16 @@ function renderEstoque(data) {
                     <p><strong>Cliente:</strong> ${item.Emaf_Clientes?.Cliente || 'N/A'}</p>
                     <p><strong>Responsável:</strong> ${item.Emaf_Equipe?.Nome || 'N/A'}</p>
                     <p><strong>Lote:</strong> ${item.Lote || 'N/A'} | <strong>Container:</strong> ${item.Container || 'N/A'}</p>
-                    <p><strong>Quantidade:</strong> ${formatQuantity(item.Quantidade)} Kg</p>
+                    <div class="flex justify-between border-t border-b border-gray-100 dark:border-gray-700 py-1 mt-1">
+                        <p><strong>Qtde Inicial:</strong> ${formatQuantity(item.Quantidade)} Kg</p>
+                        <p class="${saldoClass}"><strong>Saldo:</strong> ${formatQuantity(saldo)} Kg</p>
+                    </div>
                 </div>
                 <div class="flex justify-end pt-2 mt-2 border-t dark:border-gray-600 space-x-2">${actionsHTML}</div>
             </div>`;
     });
 }
+
 function createProducaoCard(item) {
     const formatQuantity = (qty) => Number(qty || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
