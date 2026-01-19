@@ -1,3 +1,886 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+images/ponteslogosfundo.png
+images/ponteslogosfundo4.png
+index.html
+netlify.toml
+netlify/functions/api.js
+netlify/functions/upload.js
+package.json
+script.js
+style.css
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="netlify.toml">
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+</file>
+
+<file path="netlify/functions/upload.js">
+// netlify/functions/upload.js
+const axios = require('axios');
+const FormData = require('form-data');
+
+exports.handler = async function(event, context) {
+    if (event.httpMethod !== 'POST') {
+        return { statusCode: 405, body: 'Method Not Allowed' };
+    }
+
+    const API_TOKEN = process.env.NOCODB_API_TOKEN;
+    const { tableName, columnName } = event.queryStringParameters;
+
+    if (!tableName || !columnName) {
+        return { statusCode: 400, body: 'Bad Request: tableName and columnName are required.' };
+    }
+
+    const UPLOAD_URL_BASE = process.env.NOCODB_UPLOAD_URL;
+    const fullUploadUrl = `${UPLOAD_URL_BASE}?path=Consultoria_DB/${tableName}/${columnName}`;
+
+    try {
+        const formData = new FormData();
+        // O corpo do evento virá em base64 pela Netlify
+        const fileBuffer = Buffer.from(event.body, 'base64');
+        
+        // Extrai o tipo de conteúdo e nome do arquivo dos headers
+        const contentType = event.headers['content-type'];
+        const contentDisposition = event.headers['content-disposition'];
+        const filenameMatch = contentDisposition && contentDisposition.match(/filename="(.+)"/);
+        const filename = filenameMatch ? filenameMatch[1] : 'upload.dat';
+
+        formData.append('file', fileBuffer, { filename, contentType });
+
+        const response = await axios.post(fullUploadUrl, formData, {
+            headers: {
+                ...formData.getHeaders(),
+                'xc-token': API_TOKEN,
+            },
+        });
+
+        return {
+            statusCode: 200,
+            body: JSON.stringify(response.data)
+        };
+    } catch (error) {
+        console.error("Erro na função de upload:", error.response ? error.response.data : error.message);
+        return {
+            statusCode: error.response ? error.response.status : 500,
+            body: JSON.stringify({ error: 'Falha no upload do arquivo.' })
+        };
+    }
+};
+</file>
+
+<file path="netlify/functions/api.js">
+// netlify/functions/api.js
+
+const fetch = require('node-fetch');
+
+exports.handler = async function(event, context) {
+    const API_URL_BASE = process.env.NOCODB_API_URL;
+    const API_TOKEN = process.env.NOCODB_API_TOKEN;
+
+    if (!API_URL_BASE || !API_TOKEN) {
+        return { statusCode: 500, body: JSON.stringify({ error: "Variáveis de ambiente não configuradas no servidor." }) };
+    }
+
+    const apiPath = event.path.replace('/.netlify/functions/api/', '');
+    const queryString = event.rawQuery ? `?${event.rawQuery}` : '';
+    const fullNocoDBUrl = `${API_URL_BASE}/${apiPath}${queryString}`;
+
+    const fetchOptions = {
+        method: event.httpMethod,
+        headers: {
+            'Content-Type': 'application/json',
+            'xc-token': API_TOKEN,
+        },
+    };
+
+    // Adiciona o corpo (body) apenas para métodos que o suportam e se ele existir.
+    if (['POST', 'PATCH'].includes(event.httpMethod) && event.body) {
+        fetchOptions.body = event.body;
+    }
+
+    try {
+        const response = await fetch(fullNocoDBUrl, fetchOptions);
+
+        // Para DELETE ou respostas sem conteúdo, retorna sucesso.
+        if (response.status === 204 || event.httpMethod === 'DELETE') {
+            return { statusCode: 200, body: JSON.stringify({ success: true }) };
+        }
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            return {
+                statusCode: response.status,
+                body: JSON.stringify(data)
+            };
+        }
+
+        return {
+            statusCode: 200,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        };
+
+    } catch (error) {
+        console.error("Erro na função Netlify 'api.js':", error);
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ 
+                error: 'Falha ao processar a requisição na função do servidor.',
+                details: error.message
+            })
+        };
+    }
+};
+</file>
+
+<file path="package.json">
+{
+  "name": "pontesconsultoriaemaf-netlify-functions",
+  "version": "1.0.0",
+  "description": "Dependencies for Netlify Functions",
+  "dependencies": {
+    "axios": "^1.6.2",
+    "form-data": "^4.0.0",
+    "node-fetch": "^2.6.7"
+  }
+}
+</file>
+
+<file path="style.css">
+/* style.css */
+:root {
+  --brand-gold: #BFA16A;
+  --brand-dark: #373737;
+  --accent-orange: #f59e0b;
+  --electric-blue: #3b82f6;
+  --dark-overlay: rgba(0, 0, 0, 0.2);
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+/* Logo da tela de Login (sem animação de glow) */
+#login-screen .logo-symbol { 
+    width: 80px; 
+    height: 80px; 
+    border-radius: 10px; 
+    margin-right: 15px; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    position: relative; 
+}
+
+/* Logo da barra lateral (com espaçamento) */
+#sidebar .logo-symbol-sidebar {
+    width: 80px; 
+    height: 80px;
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    position: relative;
+    margin-top: 0.5rem; 
+}
+
+/* Cores da Marca */
+.bg-brand-gold { background-color: var(--brand-gold); }
+.text-brand-gold { color: var(--brand-gold); }
+.border-brand-gold { border-color: var(--brand-gold); }
+.hover\:bg-brand-gold-dark:hover { background-color: #a68a5a; }
+.bg-brand-dark { background-color: var(--brand-dark); }
+.text-brand-dark { color: var(--brand-dark); }
+
+/* Animações de Modal */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-bg-animate { animation: fadeIn 0.3s ease-out forwards; }
+.modal-content-animate { animation: slideIn 0.3s ease-out forwards; }
+</file>
+
+<file path="index.html">
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pontes Consultoria - Gestão</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" href="images/ponteslogosfundo4.png" type="image/png">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-300 transition-colors duration-300">
+
+    <!-- Tela de Login -->
+    <div id="login-screen" class="flex items-center justify-center min-h-screen px-4">
+        <div class="w-full max-w-md p-8 space-y-8 bg-white rounded-xl shadow-lg dark:bg-gray-800">
+            <div class="flex flex-col items-center">
+                <div class="flex flex-col items-center mb-4">
+                    <div class="logo-symbol">
+                        <img src="images/ponteslogosfundo4.png" alt="Logo Pontes Consultoria" class="w-20 h-20 object-contain">
+                    </div>
+                    <div class="text-center mt-4">
+                        <h1 class="text-3xl font-bold text-brand-dark dark:text-gray-200">PONTES</h1>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 -mt-1">CONSULTORIA</p>
+                    </div>
+                </div>
+                <h2 class="text-2xl font-bold text-center text-gray-900 dark:text-white">Acesse o sistema</h2>
+            </div>
+            <form id="login-form" class="mt-8 space-y-6">
+                <div><input id="username" name="username" type="text" autocomplete="username" required class="relative block w-full px-3 py-2 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-t-md focus:outline-none focus:ring-brand-gold focus:border-brand-gold focus:z-10 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-500 dark:text-white" placeholder="Usuário"></div>
+                <div><input id="password" name="password" type="password" autocomplete="current-password" required class="relative block w-full px-3 py-2 text-gray-900 placeholder-gray-500 border border-gray-300 rounded-b-md focus:outline-none focus:ring-brand-gold focus:border-brand-gold focus:z-10 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-500 dark:text-white" placeholder="Senha"></div>
+                <div><button type="submit" class="relative flex justify-center w-full px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md group bg-brand-dark hover:bg-brand-gold focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-gold transition-colors">Entrar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sistema Principal -->
+    <div id="main-app" class="hidden">
+        <div class="flex h-screen bg-gray-100 dark:bg-gray-900">
+            <!-- Barra Lateral -->
+            <aside id="sidebar" class="absolute z-30 flex-col items-center w-20 text-white transform -translate-x-full lg:relative lg:flex lg:translate-x-0 transition-transform duration-200 ease-in-out bg-brand-dark dark:bg-gray-800">
+                 <div class="logo-symbol-sidebar">
+                    <img src="images/ponteslogosfundo.png" alt="Logo Pontes Consultoria" style="width: 58px; height: 50px; object-fit: contain;" />
+                </div>
+                <nav class="flex-1 mt-6">
+    <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg" data-target="dashboard" title="Dashboard"><i class="fas fa-chart-pie"></i></a>
+    <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg" data-target="estoque" title="Estoque"><i class="fas fa-warehouse"></i></a>
+    <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg" data-target="producao" title="Produção"><i class="fas fa-industry"></i></a>
+    <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg" data-target="equipe" title="Equipe"><i class="fas fa-users"></i></a>
+    <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg" data-target="clientes" title="Clientes"><i class="fas fa-handshake"></i></a>
+    <a href="#" class="nav-link flex items-center justify-center w-12 h-12 mb-4 rounded-lg" data-target="produtos" title="Produtos"><i class="fas fa-box-open"></i></a>
+</nav>
+            </aside>
+            <div id="sidebar-overlay" class="fixed inset-0 z-20 bg-black bg-opacity-50 hidden lg:hidden"></div>
+
+            <!-- Conteúdo Principal -->
+<div class="flex flex-col flex-1 min-w-0">
+    <header class="flex items-center justify-between h-20 px-6 bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+             <div class="flex items-center">
+                        <button id="sidebar-toggle" class="text-gray-500 dark:text-gray-400 focus:outline-none lg:hidden"><i class="fas fa-bars fa-lg"></i></button>
+                        <div class="ml-4 lg:ml-0">
+                            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white">Pontes Consultoria</h1>                            
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2 sm:space-x-4">
+                        <div class="text-right">
+                             <p id="logged-user-name" class="text-sm font-semibold text-gray-700 dark:text-gray-200"></p>
+                             <p id="logged-user-role" class="text-xs text-gray-500 dark:text-gray-400 hidden sm:block"></p>
+                        </div>
+                        <img class="w-10 h-10 rounded-full object-cover" src="https://i.pravatar.cc/150?u=admin" alt="Avatar">
+                        <button id="logout-button" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700" title="Sair"><i class="fas fa-sign-out-alt fa-lg"></i></button>
+                    </div>
+                </header>
+
+                <main class="flex-1 p-6 overflow-y-auto">
+                    <!-- ======================= TELA DE ESTOQUE ======================= -->
+<div id="estoque" class="page">
+    <div id="estoque-list-container">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+            <div>
+                <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Controle de Estoque</h2>
+                <p class="text-gray-600 dark:text-gray-300">Gerencie as entradas e saídas de produtos.</p>
+            </div>
+            <button id="show-estoque-form" class="bg-brand-gold text-white px-4 py-2 rounded-lg shadow hover:bg-brand-gold-dark transition-colors w-full sm:w-auto flex-shrink-0">Nova Entrada</button>
+        </div>
+        <!-- Filtros Atualizados -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 xl:grid-cols-7 gap-4 mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+            <div><label for="filter-estoque-start-date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">De</label><input type="date" id="filter-estoque-start-date" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
+            <div><label for="filter-estoque-end-date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Até</label><input type="date" id="filter-estoque-end-date" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
+            <div><label for="filter-estoque-cliente" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cliente</label><select id="filter-estoque-cliente" class="cliente-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select></div>
+            <div><label for="filter-estoque-produto" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Produto</label><select id="filter-estoque-produto" class="produto-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select></div>
+            <div><label for="filter-estoque-lote" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Lote</label><input type="text" id="filter-estoque-lote" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
+            <div><label for="filter-estoque-container" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Container</label><select id="filter-estoque-container" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option value="">Todos</option><option value="Container 1">Container 1</option><option value="Container 2">Container 2</option><option value="In Natura">In Natura</option></select></div>
+            <div><label for="filter-estoque-status" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Status</label><select id="filter-estoque-status" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option value="">Todos</option><option value="Recebido">Recebido</option><option value="Recusado">Recusado</option></select></div>
+        </div>
+        <!-- Tabela Atualizada (Desktop) -->
+        <div class="relative overflow-x-auto shadow-md sm:rounded-lg hidden md:block">
+            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">Data</th>
+                        <th scope="col" class="px-6 py-3">Cliente</th>
+                        <th scope="col" class="px-6 py-3">Responsável</th>
+                        <th scope="col" class="px-6 py-3">Produto</th>
+                        <th scope="col" class="px-6 py-3">Lote</th>
+                        <th scope="col" class="px-6 py-3">Container</th>
+                        <th scope="col" class="px-6 py-3">Qtde (Kg)</th>
+                        <th scope="col" class="px-6 py-3">Saldo Atual (Kg)</th> <th scope="col" class="px-6 py-3">Status</th>
+                        <th scope="col" class="px-6 py-3">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="estoque-table-body"></tbody>
+            </table>
+        </div>
+        <!-- Cards (Mobile) -->
+        <div id="estoque-cards-container" class="grid grid-cols-1 gap-4 md:hidden"></div>
+    </div>
+    <!-- Formulário de Estoque Atualizado (oculto) -->
+    <div id="estoque-form-container" class="hidden mt-6 p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+        <h3 id="estoque-form-title" class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Nova Entrada no Estoque</h3>
+        <form id="estoque-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <input type="hidden" id="estoque-Id">
+            
+            <div><label for="estoque-Emaf_Equipe" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Responsável</label><select id="estoque-Emaf_Equipe" class="equipe-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required disabled></select></div>
+            <div><label for="estoque-Data" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Data e Hora</label><input type="datetime-local" id="estoque-Data" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required disabled></div>
+            
+            <div><label for="estoque-Emaf_Clientes" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cliente</label><select id="estoque-Emaf_Clientes" class="cliente-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required></select></div>
+            <div><label for="estoque-Emaf_Produto" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Produto</label><select id="estoque-Emaf_Produto" class="produto-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required></select></div>
+            
+            <div><label for="estoque-Lote" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Lote</label><input type="text" id="estoque-Lote" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required></div>
+            <div><label for="estoque-Etiqueta" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Foto da Etiqueta</label><input type="file" id="estoque-Etiqueta" class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" required> <img id="estoque-Etiqueta-preview" class="hidden mt-2 w-24 h-24 object-cover rounded-lg border dark:border-gray-600"></div>
+
+            <div><label for="estoque-Quantidade" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Quantidade (Kg)</label><input type="text" inputmode="decimal" id="estoque-Quantidade" placeholder="Ex: 450,50" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required></div>
+            <div><label for="estoque-Container" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Container</label><select id="estoque-Container" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required><option value="">Selecione</option><option value="Container 1">Container 1</option><option value="Container 2">Container 2</option><option value="In Natura">In Natura</option></select></div>
+            <div class="md:col-span-2"><label for="estoque-Status" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Status</label><select id="estoque-Status" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required><option value="Recebido">Recebido</option><option value="Recusado">Recusado</option></select></div>
+            <div class="md:col-span-2"><label for="estoque-Observacao" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Observação</label><textarea id="estoque-Observacao" rows="3" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-brand-gold focus:border-brand-gold dark:bg-gray-700 dark:border-gray-600 dark:text-white"></textarea></div>
+            
+            <!-- Campos Condicionais para Status "Recusado" -->
+            <div id="recusado-fotos-container" class="hidden md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                <div><label for="estoque-Foto_Produto" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Foto do Produto</label><input type="file" id="estoque-Foto_Produto" class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"> <img id="estoque-Foto_Produto-preview" class="hidden mt-2 w-24 h-24 object-cover rounded-lg border dark:border-gray-600"></div>
+                <div><label for="estoque-Foto_Local" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Foto do Local</label><input type="file" id="estoque-Foto_Local" class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"> <img id="estoque-Foto_Local-preview" class="hidden mt-2 w-24 h-24 object-cover rounded-lg border dark:border-gray-600"></div>
+                <div><label for="estoque-Foto_Veiculo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Foto do Veículo</label><input type="file" id="estoque-Foto_Veiculo" class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"> <img id="estoque-Foto_Veiculo-preview" class="hidden mt-2 w-24 h-24 object-cover rounded-lg border dark:border-gray-600"></div>
+            </div>
+            
+            <div class="md:col-span-2 flex justify-end space-x-4">
+                <button type="button" id="cancel-estoque-form" class="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-brand-gold rounded-md hover:bg-brand-gold-dark transition-colors">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+<!-- ======================= TELA DE PRODUÇÃO  ======================= -->
+<div id="producao" class="page hidden">
+    <!-- Cabeçalho da Página -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <div>
+            <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Controle de Produção</h2>
+            <p class="text-gray-600 dark:text-gray-300">Acompanhe o status das ordens de produção em tempo real.</p>
+        </div>
+        
+        <div class="flex items-center space-x-2 bg-gray-200 dark:bg-gray-700 p-1 rounded-lg">
+            <button id="toggle-kanban-view" class="px-3 py-1 text-sm rounded-md transition-colors" title="Visualização em Kanban">
+                <i class="fas fa-th-large"></i>
+            </button>
+            <button id="toggle-list-view" class="px-3 py-1 text-sm rounded-md transition-colors" title="Visualização em Lista">
+                <i class="fas fa-list"></i>
+            </button>
+        </div>
+        
+        <button id="show-producao-form" class="bg-brand-gold text-white px-4 py-2 rounded-lg shadow hover:bg-brand-gold-dark transition-colors w-full sm:w-auto flex-shrink-0">
+            <i class="fas fa-plus mr-2"></i>Nova Produção
+        </button>
+    </div>
+
+<!-- Filtros -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4 mb-4 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+    <div><label for="filter-producao-start-date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">De</label><input type="date" id="filter-producao-start-date" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
+    <div><label for="filter-producao-end-date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Até</label><input type="date" id="filter-producao-end-date" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
+    
+    <!-- CAMPO ADICIONADO -->
+    <div><label for="filter-producao-cliente" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cliente</label><select id="filter-producao-cliente" class="producao-filter cliente-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select></div>
+    
+    <div><label for="filter-producao-lote" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Lote Batelada</label><input type="text" id="filter-producao-lote" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="Buscar lote..."></div>
+    <div><label for="filter-producao-responsavel" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Responsável</label><select id="filter-producao-responsavel" class="producao-filter equipe-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select></div>
+    <div><label for="filter-producao-estufa" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Estufa</label><select id="filter-producao-estufa" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option value="">Todas</option><option value="A">Estufa A</option><option value="B">Estufa B</option><option value="C">Estufa C</option><option value="D">Estufa D</option></select></div>
+    <div><label for="filter-producao-status" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Status</label><select id="filter-producao-status" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option value="">Todos</option><option value="Processamento">Processamento</option><option value="Em Liofilização">Em Liofilização</option><option value="Finalizado">Finalizado</option></select></div>
+    <div><label for="filter-producao-turno" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Turno</label><select id="filter-producao-turno" class="producao-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"><option value="">Todos</option><option value="Diurno">Diurno</option><option value="Noturno">Noturno</option></select></div>
+    
+    <div class="xl:col-start-7 xl:col-span-2 flex justify-end items-end space-x-4 pt-4 xl:pt-0">
+         <button id="generate-producao-report" class="px-4 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex items-center">
+            <i class="fas fa-file-pdf mr-2"></i>Gerar Relatório
+        </button>
+        <button id="clear-producao-filters" class="px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Limpar Filtros</button>
+    </div>
+</div>
+
+    <!-- Contêiner para a Visualização Kanban -->
+    <div id="producao-kanban-container">
+        <div id="kanban-board" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Coluna 1: Processamento -->
+            <div class="flex flex-col bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg text-gray-700 dark:text-gray-200">Processamento</h3>
+                    <span id="count-preparo" class="bg-gray-300 dark:bg-gray-600 text-xs font-semibold px-2 py-1 rounded-full">0</span>
+                </div>
+                <div id="kanban-column-preparo" class="flex-1 space-y-4 overflow-y-auto"></div>
+            </div>
+            <!-- Coluna 2: Em Liofilização -->
+            <div class="flex flex-col bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg text-gray-700 dark:text-gray-200">Em Liofilização</h3>
+                    <span id="count-producao" class="bg-yellow-300 dark:bg-yellow-600 text-yellow-800 dark:text-yellow-100 text-xs font-semibold px-2 py-1 rounded-full">0</span>
+                </div>
+                <div id="kanban-column-producao" class="flex-1 space-y-4 overflow-y-auto"></div>
+            </div>
+            <!-- Coluna 3: Finalizado -->
+            <div class="flex flex-col bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg text-gray-700 dark:text-gray-200">Finalizado</h3>
+                    <span id="count-finalizado" class="bg-green-300 dark:bg-green-600 text-green-800 dark:text-green-100 text-xs font-semibold px-2 py-1 rounded-full">0</span>
+                </div>
+                <div id="kanban-column-finalizado" class="flex-1 space-y-4 overflow-y-auto"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contêiner para a Visualização em Lista (inicialmente oculto) -->
+    <div id="producao-list-container" class="hidden">
+        <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
+            <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                    <tr>
+                        <th scope="col" class="px-6 py-3">Status</th>
+                        <th scope="col" class="px-6 py-3">Cliente / Produto</th>
+                        <th scope="col" class="px-6 py-3">Lote Estoque</th>
+                        <th scope="col" class="px-6 py-3">Lote Batelada</th>
+                        <th scope="col" class="px-6 py-3">Início Preparo</th>
+                        <th scope="col" class="px-6 py-3">Início Produção</th>
+                        <th scope="col" class="px-6 py-3">Finalizado</th>
+                        <th scope="col" class="px-6 py-3">Responsável / Turno</th>
+                        <th scope="col" class="px-6 py-3">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="producao-table-body">
+                    <!-- Linhas da tabela serão inseridas aqui via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+                    <!-- ======================= TELA DE EQUIPE ======================= -->
+                    <div id="equipe" class="page hidden">
+                        <div id="equipe-list-container">
+                             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                                <div>
+                                    <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Equipe</h2>
+                                    <p class="text-gray-600 dark:text-gray-300">Gerenciamento de usuários do sistema.</p>
+                                </div>
+                                <div class="relative w-full sm:w-auto"><input type="text" id="equipe-search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full pl-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" placeholder="Buscar por nome..."><div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><i class="fas fa-search text-gray-400"></i></div></div>
+                                <button id="show-equipe-form" class="bg-brand-gold text-white px-4 py-2 rounded-lg shadow hover:bg-brand-gold-dark transition-colors w-full sm:w-auto flex-shrink-0">Novo Membro</button>
+                            </div>
+                            <div id="equipe-cards-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+                        </div>
+                        <div id="equipe-form-container" class="hidden mt-6 p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+                             <h3 id="equipe-form-title" class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Novo Membro</h3>
+                             <form id="equipe-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <input type="hidden" id="equipe-Id">
+                                <div class="md:col-span-2 flex items-center space-x-4">
+                                    <img id="equipe-Foto-preview" src="https://placehold.co/100x100/e2e8f0/cbd5e0?text=Foto" class="w-24 h-24 rounded-full object-cover">
+                                    <input type="file" id="equipe-Foto" class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400">
+                                </div>
+                                <div><label for="equipe-Nome" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nome</label><input type="text" id="equipe-Nome" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" required></div>
+                                <div><label for="equipe-Login" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Login</label><input type="text" id="equipe-Login" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" required></div>
+                                <div><label for="equipe-Senha" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Senha</label><input type="password" id="equipe-Senha" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" placeholder="Deixe em branco para não alterar"></div>
+                                <div><label for="equipe-Role" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Função</label><select id="equipe-Role" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required><option value="">Selecione...</option><option value="Admin">Admin</option><option value="Gestão">Gestão</option><option value="Produção">Produção</option></select></div>
+                                <div class="md:col-span-2 flex justify-end space-x-4">
+                                    <button type="button" id="cancel-equipe-form" class="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                                    <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-brand-gold rounded-md hover:bg-brand-gold-dark transition-colors">Salvar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- ====================== TELA DE CLIENTES ====================== -->
+                    <div id="clientes" class="page hidden">
+                         <div id="clientes-list-container">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                                <div>
+                                    <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Clientes</h2>
+                                    <p class="text-gray-600 dark:text-gray-300">Gerenciamento de clientes.</p>
+                                </div>
+                                <div class="relative w-full sm:w-auto"><input type="text" id="clientes-search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full pl-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" placeholder="Buscar por cliente..."><div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><i class="fas fa-search text-gray-400"></i></div></div>
+                                <button id="show-clientes-form" class="bg-brand-gold text-white px-4 py-2 rounded-lg shadow hover:bg-brand-gold-dark transition-colors w-full sm:w-auto flex-shrink-0">Novo Cliente</button>
+                            </div>
+                            <div id="clientes-cards-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+                        </div>
+                        <div id="clientes-form-container" class="hidden mt-6 p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+                             <h3 id="clientes-form-title" class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Novo Cliente</h3>
+                             <form id="clientes-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <input type="hidden" id="clientes-Id">
+                                <div><label for="clientes-Cliente" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nome Fantasia (Cliente)</label><input type="text" id="clientes-Cliente" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" required></div>
+                                <div><label for="clientes-Cnpj" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">CNPJ</label><input type="text" id="clientes-Cnpj" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"></div>
+                                <div class="md:col-span-2"><label for="clientes-Razao_Social" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Razão Social</label><input type="text" id="clientes-Razao_Social" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"></div>
+                                <div class="md:col-span-2 flex justify-end space-x-4">
+                                    <button type="button" id="cancel-clientes-form" class="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                                    <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-brand-gold rounded-md hover:bg-brand-gold-dark transition-colors">Salvar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- ======================= TELA DE PRODUTOS ======================= -->
+                    <div id="produtos" class="page hidden">
+                         <div id="produtos-list-container">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                                <div>
+                                    <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Produtos</h2>
+                                    <p class="text-gray-600 dark:text-gray-300">Cadastro de tipos de produtos.</p>
+                                </div>
+                                <div class="relative w-full sm:w-auto"><input type="text" id="produtos-search" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full pl-10 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" placeholder="Buscar por produto..."><div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><i class="fas fa-search text-gray-400"></i></div></div>
+                                <button id="show-produtos-form" class="bg-brand-gold text-white px-4 py-2 rounded-lg shadow hover:bg-brand-gold-dark transition-colors w-full sm:w-auto flex-shrink-0">Novo Produto</button>
+                            </div>
+                            <div id="produtos-cards-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+                        </div>
+                        <div id="produtos-form-container" class="hidden mt-6 p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+                             <h3 id="produtos-form-title" class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Novo Produto</h3>
+                             <form id="produtos-form" class="space-y-4">
+                                <input type="hidden" id="produtos-Id">
+                                <div><label for="produtos-Produto" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nome do Produto</label><input type="text" id="produtos-Produto" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" required></div>
+                                <div class="flex justify-end space-x-4">
+                                    <button type="button" id="cancel-produtos-form" class="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 transition-colors">Cancelar</button>
+                                    <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-brand-gold rounded-md hover:bg-brand-gold-dark transition-colors">Salvar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+<!-- ======================= TELA DE DASHBOARD ATUALIZADA COM ABAS ======================= -->
+<div id="dashboard" class="page hidden">
+    <!-- Navegação das Abas -->
+    <div class="mb-6 border-b border-gray-200 dark:border-gray-700">
+        <ul class="flex flex-wrap -mb-px text-sm font-medium text-center" id="dashboard-tabs">
+            <li class="mr-2">
+                <button class="dashboard-tab inline-block p-4 border-b-2 rounded-t-lg" data-tab="estoque">Estoque</button>
+            </li>
+            <li class="mr-2">
+                <button class="dashboard-tab inline-block p-4 border-b-2 rounded-t-lg" data-tab="producao">Produção</button>
+            </li>
+        </ul>
+    </div>
+<!-- ======================= ABA DE ESTOQUE (CONTEÚDO ATUALIZADO) ======================= -->
+<div id="dashboard-estoque-content" class="dashboard-tab-content">
+    
+    <div class="mb-4">
+        <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Análise de Estoque</h2>
+        <p class="text-gray-600 dark:text-gray-300">Visão geral do fluxo de matéria-prima: entradas, consumo e saldos.</p>
+    </div>
+
+    <!-- Filtros Globais (os mesmos de antes) -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div><label for="dash-start-date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">De</label><input type="date" id="dash-start-date" class="dash-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
+        <div><label for="dash-end-date" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Até</label><input type="date" id="dash-end-date" class="dash-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
+        <div><label for="dash-cliente" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cliente</label><select id="dash-cliente" class="dash-filter cliente-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select></div>
+        <div><label for="dash-produto" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Produto</label><select id="dash-produto" class="dash-filter produto-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select></div>
+        <div class="col-span-1 md:col-span-2 lg:col-span-4 flex justify-end">
+            <button id="clear-dash-filters" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Limpar Filtros</button>
+        </div>
+    </div>
+
+    <!-- KPIs de Estoque Atualizados -->
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="text-center">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Recebido (Kg)</p>
+                <h3 id="kpi-total-recebido" class="text-2xl lg:text-3xl font-bold text-green-500 mt-1">0,00</h3>
+            </div>
+            <div class="text-center">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Consumido (Kg)</p>
+                <h3 id="kpi-total-consumido" class="text-2xl lg:text-3xl font-bold text-red-500 mt-1">0,00</h3>
+            </div>
+            <div class="text-center">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Saldo Atual (Kg)</p>
+                <h3 id="kpi-saldo-atual" class="text-2xl lg:text-3xl font-bold text-blue-500 mt-1">0,00</h3>
+            </div>
+            <div class="text-center">
+                <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Total de Transações</p>
+                <h3 id="kpi-total-transacoes" class="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mt-1">0</h3>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Gráfico de Movimentação (Entrada vs. Saída) -->
+    <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800 mb-6">
+        <h4 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Movimentação de Estoque (Recebido vs. Consumido)</h4>
+        <div class="h-80"><canvas id="movimentacao-chart"></canvas></div>
+    </div>
+
+    <!-- Nova Tabela de Saldo por Produto -->
+    <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+        <h4 class="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Saldo Atual por Produto</h4>
+        <div id="saldo-produto-table" class="overflow-x-auto">
+            <!-- Tabela será gerada aqui pelo JS -->
+        </div>
+    </div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <!-- Ranking de Recusas por Cliente -->
+        <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+            <h4 class="text-xl font-semibold mb-4">Top 5 Clientes por Material Recusado</h4>
+            <div id="ranking-recusas-cliente"></div>
+        </div>
+        <!-- Ranking de Saldo por Cliente -->
+        <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+            <h4 class="text-xl font-semibold mb-4">Top 5 Clientes por Saldo em Estoque</h4>
+            <div id="ranking-saldo-cliente"></div>
+        </div>
+    </div>
+</div>
+
+<div id="dashboard-producao-content" class="dashboard-tab-content hidden">
+    <div class="mb-4">
+        <h2 class="text-3xl font-bold text-gray-800 dark:text-white">Dashboard de Produção</h2>
+        <p class="text-gray-600 dark:text-gray-300">Análise de performance e eficiência da produção.</p>
+    </div>
+
+    <!-- 1. Filtros Globais -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6 p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div><label for="dash-prod-start-date" class="block mb-2 text-sm font-medium">De</label><input type="date" id="dash-prod-start-date" class="dash-prod-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
+        <div><label for="dash-prod-end-date" class="block mb-2 text-sm font-medium">Até</label><input type="date" id="dash-prod-end-date" class="dash-prod-filter bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></div>
+        <div><label for="dash-prod-cliente" class="block mb-2 text-sm font-medium">Cliente</label><select id="dash-prod-cliente" class="dash-prod-filter cliente-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select></div>
+        <div><label for="dash-prod-produto" class="block mb-2 text-sm font-medium">Produto</label><select id="dash-prod-produto" class="dash-prod-filter produto-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select></div>
+        <div><label for="dash-prod-responsavel" class="block mb-2 text-sm font-medium">Responsável</label><select id="dash-prod-responsavel" class="dash-prod-filter equipe-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white"></select></div>
+        <div class="col-span-1 md:col-span-2 lg:col-span-5 flex justify-end space-x-4">
+            <button id="clear-dash-prod-filters" class="px-4 py-2 text-sm rounded-md bg-gray-200 text-gray-700">Limpar Filtros</button>
+        </div>
+    </div>
+
+    <!-- 2. KPIs Principais -->
+    <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div class="text-center"><p class="text-sm">Total Produzido (Kg)</p><h3 id="kpi-prod-total" class="text-3xl font-bold">0,00</h3></div>
+            <div class="text-center"><p class="text-sm">Pedidos Finalizados</p><h3 id="kpi-prod-pedidos" class="text-3xl font-bold">0</h3></div>
+            <div class="text-center"><p class="text-sm">Rendimento Médio</p><h3 id="kpi-prod-rendimento" class="text-3xl font-bold text-green-500">0,0%</h3></div>
+            <div class="text-center"><p class="text-sm">Tempo Médio de Ciclo</p><h3 id="kpi-prod-tempo-ciclo" class="text-3xl font-bold">0h 0m</h3></div>
+            <div class="text-center"><p class="text-sm">Pedidos em Andamento</p><h3 id="kpi-prod-wip" class="text-3xl font-bold text-yellow-500">0</h3></div>
+        </div>
+    </div>
+
+    <!-- 3. Visualizações Gráficas e Rankings -->
+    <div class="space-y-6">
+        <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800"><h4 class="text-xl font-semibold mb-4">Produção e Rendimento ao Longo do Tempo</h4><div class="h-80"><canvas id="producao-tempo-chart"></canvas></div></div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800"><h4 class="text-xl font-semibold mb-4">Análise de Eficiência por Produto</h4><div class="h-80"><canvas id="eficiencia-produto-chart"></canvas></div></div>
+            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800"><h4 class="text-xl font-semibold mb-4">Análise de Gargalo (Pedidos em Andamento)</h4><div class="h-80"><canvas id="gargalo-wip-chart"></canvas></div></div>
+        </div>
+        <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800"><h4 class="text-xl font-semibold mb-4">Performance de Recursos (Pedidos por Responsável/Estufa)</h4><div id="performance-recursos-table" class="overflow-x-auto"></div></div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+                <h4 class="text-xl font-semibold mb-4">Top 5 Clientes por Produção</h4>
+                <div id="ranking-producao-cliente"></div>
+            </div>
+            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+                <h4 class="text-xl font-semibold mb-4">Tempo Médio por Produto</h4>
+                <div id="ranking-tempo-produto"></div>
+            </div>
+            <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
+                <h4 class="text-xl font-semibold mb-4">Top 5 Produtos por Rendimento</h4>
+                <div id="ranking-rendimento-produto"></div>
+            </div>
+        </div>
+        <div class="p-6 bg-white rounded-lg shadow-md dark:bg-gray-800"><h4 class="text-xl font-semibold mb-4">Detalhamento de Pedidos Finalizados</h4><div class="overflow-x-auto"><table class="w-full text-sm">
+            <thead class="text-xs uppercase"><tr>
+                <th class="px-4 py-2 text-left">Produto</th><th class="px-4 py-2 text-left">Cliente</th><th class="px-4 py-2 text-left">Finalizado em</th><th class="px-4 py-2 text-right">Insumo (Kg)</th><th class="px-4 py-2 text-right">Final (Kg)</th><th class="px-4 py-2 text-right">Rendimento</th><th class="px-4 py-2 text-right">Duração</th>
+            </tr></thead><tbody id="detalhamento-producao-tbody"></tbody>
+        </table></div></div>
+    </div>
+</div>
+    </div>
+</div>
+                </main>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modals Genéricos -->
+    <div id="details-modal" class="fixed inset-0 z-40 items-center justify-center hidden bg-black bg-opacity-60 modal-bg-animate">
+        <div class="w-full max-w-lg p-6 mx-4 bg-white rounded-lg shadow-lg dark:bg-gray-800 modal-content-animate">
+            <div class="flex justify-between items-center border-b pb-3 dark:border-gray-700">
+                <h2 id="modal-title" class="text-2xl font-bold text-gray-900 dark:text-white">Detalhes</h2>
+                <button id="close-modal" class="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white text-3xl leading-none">&times;</button>
+            </div>
+            <div id="modal-content" class="mt-4 space-y-2 text-gray-700 dark:text-gray-300 max-h-96 overflow-y-auto"></div>
+            <div id="details-modal-actions" class="flex justify-end mt-6 space-x-4 hidden">
+                <button id="edit-btn" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">Editar</button>
+                <button id="delete-btn" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">Apagar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="delete-confirm-modal" class="fixed inset-0 z-[70] items-center justify-center hidden bg-black bg-opacity-60 modal-bg-animate">
+        <div class="w-full max-w-sm p-6 mx-4 bg-white rounded-lg shadow-lg dark:bg-gray-800 modal-content-animate">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Confirmar Exclusão</h2>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Você tem certeza? Esta ação não pode ser desfeita.</p>
+            <div class="flex justify-end mt-6 space-x-4">
+                <button id="cancel-delete-btn" class="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">Cancelar</button>
+                <button id="confirm-delete-btn" class="px-6 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">Apagar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="logout-confirm-modal" class="fixed inset-0 z-50 items-center justify-center hidden bg-black bg-opacity-60 modal-bg-animate">
+        <div class="w-full max-w-sm p-6 mx-4 bg-white rounded-lg shadow-lg dark:bg-gray-800 modal-content-animate">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Confirmar Saída</h2>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Deseja realmente sair do sistema?</p>
+            <div class="flex justify-end mt-6 space-x-4">
+                <button id="cancel-logout-btn" class="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">Cancelar</button>
+                <button id="confirm-logout-btn" class="px-6 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700">Sair</button>
+            </div>
+        </div>
+    </div>
+     <!-- ======================= INÍCIO DOS MODAIS DE PRODUÇÃO ======================= -->
+
+    <!-- Modal para Nova Produção / Edição -->
+    <div id="producao-modal" class="fixed inset-0 z-40 items-center justify-center hidden bg-black bg-opacity-60 modal-bg-animate">
+        <div class="w-full max-w-2xl p-6 mx-4 bg-white rounded-lg shadow-lg dark:bg-gray-800 modal-content-animate">
+            <div class="flex justify-between items-center border-b pb-3 dark:border-gray-700">
+                <h2 id="producao-modal-title" class="text-2xl font-bold text-gray-900 dark:text-white">Nova Ordem de Produção</h2>
+                <button id="close-producao-modal" class="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white text-3xl leading-none">&times;</button>
+            </div>
+            
+            <form id="producao-form" class="mt-4">
+                <input type="hidden" id="producao-Id">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                    <!-- Seleção de Cliente e Produto -->
+                    <div><label for="producao-Cliente" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Cliente</label><select id="producao-Cliente" class="cliente-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required></select></div>
+                    <div><label for="producao-Produto" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Produto</label><select id="producao-Produto" class="produto-select bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required></select></div>
+
+                    <!-- Informações do Estoque (serão preenchidas via JS) -->
+                    <div class="md:col-span-2 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                        <h4 class="text-sm font-semibold text-gray-800 dark:text-white mb-2">Informações do Lote da Matéria-Prima</h4>
+                        <div id="producao-estoque-info" class="text-sm text-gray-600 dark:text-gray-300">
+                            <p>Selecione um cliente e produto para ver o lote ativo.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Quantidade e Responsável -->
+                    <div><label for="producao-Qtde_Insumo" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Quantidade a Utilizar (Kg)</label><input type="text" inputmode="decimal" id="producao-Qtde_Insumo" placeholder="Ex: 250,50" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required></div>
+                    <div><label for="producao-Equipe" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Responsável</label><select id="producao-Equipe" class="equipe-select bg-gray-200 border border-gray-300 text-gray-700 text-sm rounded-lg block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-400" required disabled></select></div>
+                    
+                    <!-- Observação -->
+                    <div class="md:col-span-2"><label for="producao-Observacao" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Observação (Opcional)</label><textarea id="producao-Observacao" rows="2" class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-brand-gold focus:border-brand-gold dark:bg-gray-700 dark:border-gray-600 dark:text-white"></textarea></div>
+                </div>
+
+                <div class="flex justify-end mt-6 space-x-4">
+                    <button type="button" id="cancel-producao-form" class="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">Cancelar</button>
+                    <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-brand-gold rounded-md hover:bg-brand-gold-dark">Salvar e Iniciar Preparo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal Genérico para Confirmação de Ações -->
+    <div id="action-confirm-modal" class="fixed inset-0 z-[70] items-center justify-center hidden bg-black bg-opacity-60 modal-bg-animate">
+        <div class="w-full max-w-sm p-6 mx-4 bg-white rounded-lg shadow-lg dark:bg-gray-800 modal-content-animate">
+            <h2 id="action-confirm-modal-title" class="text-xl font-bold text-gray-900 dark:text-white">Confirmar Ação</h2>
+            <p id="action-confirm-modal-content" class="mt-2 text-sm text-gray-600 dark:text-gray-400">Você tem certeza que deseja executar esta ação?</p>
+            <div class="flex justify-end mt-6 space-x-4">
+                <button id="cancel-action-btn" class="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">Cancelar</button>
+                <button id="confirm-action-btn" class="px-6 py-2 text-sm font-medium text-white bg-brand-gold rounded-md hover:bg-brand-gold-dark">Confirmar</button>
+            </div>
+        </div>
+    </div>
+<!-- Modal para Detalhes da Produção (Estufa e Bandeja) -->
+    <div id="liofilizacao-details-modal" class="fixed inset-0 z-[70] items-center justify-center hidden bg-black bg-opacity-60 modal-bg-animate">
+        <div class="w-full max-w-md p-6 mx-4 bg-white rounded-lg shadow-lg dark:bg-gray-800 modal-content-animate">
+            <h2 class="text-xl font-bold text-gray-900 dark:text-white">Detalhes da Produção</h2>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Por favor, informe a estufa e a quantidade de bandejas para iniciar o processo.</p>
+            
+            <form id="liofilizacao-form" class="mt-4 space-y-4">
+                <div>
+                    <label for="liofilizacao-Estufa" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Estufa</label>
+                    <select id="liofilizacao-Estufa" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+                        <option value="">Selecione...</option>
+                        <option value="A">Estufa A</option>
+                        <option value="B">Estufa B</option>
+                        <option value="C">Estufa C</option>
+                        <option value="D">Estufa D</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="liofilizacao-Bandeja" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Quantidade de Bandejas</label>
+                    <input type="number" id="liofilizacao-Bandeja" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required min="1">
+                </div>
+                <div class="flex justify-end pt-4 space-x-4 border-t dark:border-gray-600">
+                    <button type="button" id="cancel-liofilizacao-form" class="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">Cancelar</button>
+                    <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-yellow-500 rounded-md hover:bg-yellow-600">Confirmar e Iniciar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Modal para Inserir Quantidade Final Rendimento (kg)-->
+    <div id="qtd-final-modal" class="fixed inset-0 z-[70] items-center justify-center hidden bg-black bg-opacity-60 modal-bg-animate">
+        <div class="w-full max-w-md p-6 mx-4 bg-white rounded-lg shadow-lg dark:bg-gray-800 modal-content-animate">
+            <h2 id="qtd-final-modal-title" class="text-xl font-bold text-gray-900 dark:text-white">Informar Rendimento (kg)</h2>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Insira a quantidade final produzida (em kg) para esta ordem de produção.</p>
+            
+            <form id="qtd-final-form" class="mt-4 space-y-4">
+                <div>
+                    <label for="qtd-final-input" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Rendimento (kg)</label>
+                    <input type="text" inputmode="decimal" id="qtd-final-input" placeholder="Ex: 120,75" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-brand-gold focus:border-brand-gold block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+                </div>
+
+                <div class="flex justify-end pt-4 space-x-4 border-t dark:border-gray-600">
+                    <button type="button" id="cancel-qtd-final-form" class="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">Cancelar</button>
+                    <button type="submit" class="px-6 py-2 text-sm font-medium text-white bg-blue-500 rounded-md hover:bg-blue-600">Confirmar e Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- ======================= FIM DOS MODAIS DE PRODUÇÃO ======================= -->
+    <!-- Overlay de Carregamento -->
+    <div id="loading-overlay" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black bg-opacity-60 hidden">
+        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-brand-gold"></div>
+        <p id="loading-text" class="text-white text-lg mt-4">Carregando...</p>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+</file>
+
+<file path="script.js">
 document.addEventListener('DOMContentLoaded', function() {
     // --- Configuração da API ---   
      
@@ -43,11 +926,11 @@ const charts = {
 };
     // --- Mapeamento de Nomes de Tabela ---
     const TABLE_NAME_MAP = {
-        equipe: 'm8kxb95la3bq1u1',
-        clientes: 'm3nzvi1j1wuddtv',
-        produtos: 'mk8g5ipopo3t08i',
-        estoque: 'm23cve24fkfq4fg',
-        producao: 'm636w6ysa5pttmc'
+        equipe: 'Emaf_Equipe',
+        clientes: 'Emaf_Clientes',
+        produtos: 'Emaf_Produto',
+        estoque: 'Emaf_Estoque',
+        producao: 'Emaf_Producao'
     };
    const TODAS_ESTUFAS = ['A', 'B', 'C', 'D'];
    const TODOS_CONTAINERS = ['Container 1', 'Container 2', 'In Natura'];
@@ -1019,28 +1902,27 @@ async function fetchAllData() {
 }
 
     async function fetchEquipe() {
-        const result = await nocoFetch(`${TABLE_NAME_MAP.equipe}?nested[all]=true`);
+        const result = await nocoFetch('Emaf_Equipe?nested[all]=true');
         equipeData = (result && result.list) ? result.list.sort((a, b) => a.Nome.localeCompare(b.Nome)) : [];
     }
     async function fetchClientes() {
-        const result = await nocoFetch(TABLE_NAME_MAP.clientes);
+        const result = await nocoFetch('Emaf_Clientes');
         clientesData = (result && result.list) ? result.list.sort((a, b) => a.Cliente.localeCompare(b.Cliente)) : [];
     }
     async function fetchProdutos() {
-        const result = await nocoFetch(TABLE_NAME_MAP.produtos);
+        const result = await nocoFetch('Emaf_Produto');
         produtosData = (result && result.list) ? result.list.sort((a, b) => a.Produto.localeCompare(b.Produto)) : [];
     }
     async function fetchEstoque() {
-        const result = await nocoFetch(`${TABLE_NAME_MAP.estoque}?nested[all]=true`);
+        const result = await nocoFetch('Emaf_Estoque?nested[all]=true');
         estoqueData = (result && result.list) ? result.list.sort((a, b) => new Date(b.Data) - new Date(a.Data)) : [];
     }
     async function fetchProducao() {
-        // Usamos nested[all]=true para já trazer os dados das tabelas relacionadas (cliente, produto, etc.)
-        const result = await nocoFetch(`${TABLE_NAME_MAP.producao}?nested[all]=true&fields=*`);
-        producaoData = (result && result.list) ? result.list : [];
-    }
+    // Usamos nested[all]=true para já trazer os dados das tabelas relacionadas (cliente, produto, etc.)
+    const result = await nocoFetch('Emaf_Producao?nested[all]=true&fields=*');
+    producaoData = (result && result.list) ? result.list : [];
+}
 
-    // --- Autenticação e Sessão ---
     // --- Autenticação e Sessão ---
     async function handleLogin(e) {
         e.preventDefault();
@@ -1050,8 +1932,7 @@ async function fetchAllData() {
 
         showLoadingOverlay('Autenticando...');
         
-        // Use o ID da tabela de equipe
-        const endpoint = `${TABLE_NAME_MAP.equipe}?where=(Login,eq,${username})~and(Senha,eq,${password})`;
+        const endpoint = `Emaf_Equipe?where=(Login,eq,${username})~and(Senha,eq,${password})`;
         const result = await nocoFetch(endpoint);
         
         hideLoadingOverlay();
@@ -1993,13 +2874,9 @@ async function handleProducaoSelectChange(event) {
         }
 
         // Monta a query para buscar lotes ativos e recebidos para o cliente
-        // Nota: Mantemos os nomes das colunas (Emaf_Clientes_id) assumindo que o alias da coluna não mudou.
-        // Se der erro de coluna não encontrada, precisaremos verificar o ID da coluna de relacionamento.
         const whereClause = `(Emaf_Clientes_id,eq,${clienteId})~and(Status_Lote,eq,Ativo)~and(Status,eq,Recebido)`;
         const nestedClause = `nested[Emaf_Produto][fields]=Id,Produto`;
-        
-        // Use o ID da tabela de estoque
-        const lotesAtivosEndpoint = `${TABLE_NAME_MAP.estoque}?where=${encodeURIComponent(whereClause)}&${nestedClause}`;
+        const lotesAtivosEndpoint = `Emaf_Estoque?where=${encodeURIComponent(whereClause)}&${nestedClause}`;
         
         const result = await nocoFetch(lotesAtivosEndpoint);
 
@@ -2033,16 +2910,14 @@ async function handleProducaoSelectChange(event) {
         showLoadingOverlay('Buscando lote ativo...');
 
         const whereClause = `(Emaf_Clientes_id,eq,${clienteId})~and(Emaf_Produto_id,eq,${produtoId})~and(Status_Lote,eq,Ativo)~and(Status,eq,Recebido)`;
-        // Use o ID da tabela de estoque
-        const endpoint = `${TABLE_NAME_MAP.estoque}?where=${encodeURIComponent(whereClause)}&limit=1`;
+        const endpoint = `Emaf_Estoque?where=${encodeURIComponent(whereClause)}&limit=1`;
         
         const result = await nocoFetch(endpoint);
 
         if (result && result.list && result.list.length > 0) {
             const loteAtivo = result.list[0];
 
-            // Use o ID da tabela de produção
-            const consumidoEndpoint = `${TABLE_NAME_MAP.producao}?fields=Qtde_Insumo&where=(Emaf_Estoque_id,eq,${loteAtivo.Id})`;
+            const consumidoEndpoint = `Emaf_Producao?fields=Qtde_Insumo&where=(Emaf_Estoque_id,eq,${loteAtivo.Id})`;
             const consumidoResult = await nocoFetch(consumidoEndpoint);
             
             const totalConsumido = consumidoResult.list.reduce((sum, item) => sum + (item.Qtde_Insumo || 0), 0);
@@ -2069,8 +2944,7 @@ async function checkAndFinalizeLote(loteId) {
     if (!lote) return;
 
     // Recalcula o consumo total para ter certeza
-    // Use o ID da tabela de produção aqui
-    const consumidoEndpoint = `${TABLE_NAME_MAP.producao}?fields=Qtde_Insumo&where=(Emaf_Estoque_id,eq,${loteId})`;
+    const consumidoEndpoint = `Emaf_Producao?fields=Qtde_Insumo&where=(Emaf_Estoque_id,eq,${loteId})`;
     const consumidoResult = await nocoFetch(consumidoEndpoint);
     const totalConsumido = consumidoResult.list.reduce((sum, item) => sum + (item.Qtde_Insumo || 0), 0);
 
@@ -2700,3 +3574,6 @@ function setupEventListeners() {
     setupEventListeners();
     checkSession();
 });
+</file>
+
+</files>
