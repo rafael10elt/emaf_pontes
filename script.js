@@ -1979,10 +1979,9 @@ async function handleProducaoSelectChange(event) {
     const produtoSelect = document.getElementById('producao-Produto');
     const infoBox = document.getElementById('producao-estoque-info');
     
-    activeLoteProducao = null; // Reseta a cada mudança
+    activeLoteProducao = null;
     infoBox.innerHTML = '<p>Selecione um cliente e produto para ver o lote ativo.</p>';
 
-    // Se o gatilho foi a mudança do CLIENTE
     if (event.target.id === 'producao-Cliente') {
         produtoSelect.innerHTML = '<option value="">Carregando produtos...</option>';
         produtoSelect.disabled = true;
@@ -1992,19 +1991,14 @@ async function handleProducaoSelectChange(event) {
             return;
         }
 
-        // Monta a query para buscar lotes ativos e recebidos para o cliente
-        // Nota: Mantemos os nomes das colunas (Emaf_Clientes_id) assumindo que o alias da coluna não mudou.
-        // Se der erro de coluna não encontrada, precisaremos verificar o ID da coluna de relacionamento.
-        const whereClause = `(Emaf_Clientes_id,eq,${clienteId})~and(Status_Lote,eq,Ativo)~and(Status,eq,Recebido)`;
+        // Busca todos os lotes com status 'Recebido' para o cliente selecionado
+        const whereClause = `(Emaf_Clientes_id,eq,${clienteId})~and(Status,eq,Recebido)`;
         const nestedClause = `nested[Emaf_Produto][fields]=Id,Produto`;
+        const endpoint = `${TABLE_NAME_MAP.estoque}?where=${encodeURIComponent(whereClause)}&${nestedClause}`;
         
-        // Use o ID da tabela de estoque
-        const lotesAtivosEndpoint = `${TABLE_NAME_MAP.estoque}?where=${encodeURIComponent(whereClause)}&${nestedClause}`;
-        
-        const result = await nocoFetch(lotesAtivosEndpoint);
+        const result = await nocoFetch(endpoint);
 
         if (result && result.list && result.list.length > 0) {
-            // Extrai produtos únicos dos lotes ativos encontrados
             const produtosDisponiveis = result.list.reduce((acc, item) => {
                 if (item.Emaf_Produto && !acc.some(p => p.Id === item.Emaf_Produto.Id)) {
                     acc.push(item.Emaf_Produto);
@@ -2014,74 +2008,137 @@ async function handleProducaoSelectChange(event) {
             
             if (produtosDisponiveis.length > 0) {
                 let options = '<option value="">Selecione um produto...</option>';
-                produtosDisponiveis.sort((a,b) => a.Produto.localeCompare(b.Produto)).forEach(produto => {
+                produtosDisponiveis.sort((a, b) => a.Produto.localeCompare(b.Produto)).forEach(produto => {
                     options += `<option value="${produto.Id}">${produto.Produto}</option>`;
                 });
                 produtoSelect.innerHTML = options;
                 produtoSelect.disabled = false;
             } else {
-                 produtoSelect.innerHTML = '<option value="">Nenhum produto com lote ativo</option>';
+                 produtoSelect.innerHTML = '<option value="">Nenhum produto com lote disponível</option>';
             }
         } else {
-            produtoSelect.innerHTML = '<option value="">Nenhum produto com lote ativo</option>';
+            produtoSelect.innerHTML = '<option value="">Nenhum produto com lote disponível</option>';
         }
         return; 
     }
 
-    // Se o gatilho foi a mudança do PRODUTO (e o cliente já está selecionado)
     if (clienteId && produtoId) {
-        showLoadingOverlay('Buscando lote ativo...');
+        showLoadingOverlay('Verificando saldo do lote...');
 
-        const whereClause = `(Emaf_Clientes_id,eq,${clienteId})~and(Emaf_Produto_id,eq,${produtoId})~and(Status_Lote,eq,Ativo)~and(Status,eq,Recebido)`;
-        // Use o ID da tabela de estoque
-        const endpoint = `${TABLE_NAME_MAP.estoque}?where=${encodeURIComponent(whereClause)}&limit=1`;
-        
+        // 1. Pega todas as entradas "Recebidas" para o cliente/produto, ordenadas pela data (FIFO)
+        const whereClause = `(Emaf_Clientes_id,eq,${clienteId})~and(Emaf_Produto_id,eq,${produtoId})~and(Status,eq,Recebido)`;
+        const endpoint = `${TABLE_NAME_MAP.estoque}?where=${encodeURIComponent(whereClause)}&sort=Data`;
         const result = await nocoFetch(endpoint);
 
-        if (result && result.list && result.list.length > 0) {
-            const loteAtivo = result.list[0];
+        if (!result || !result.list || result.list.length === 0) {
+            infoBox.innerHTML = '<p class="text-red-500 font-semibold">Nenhum lote de matéria-prima encontrado.</p>';
+            hideLoadingOverlay();
+            return;
+        }
 
-            // Use o ID da tabela de produção
-            const consumidoEndpoint = `${TABLE_NAME_MAP.producao}?fields=Qtde_Insumo&where=(Emaf_Estoque_id,eq,${loteAtivo.Id})`;
-            const consumidoResult = await nocoFetch(consumidoEndpoint);
-            
-            const totalConsumido = consumidoResult.list.reduce((sum, item) => sum + (item.Qtde_Insumo || 0), 0);
-            const saldo = (loteAtivo.Quantidade || 0) - totalConsumido;
-            
-            activeLoteProducao = { ...loteAtivo, saldo: saldo };
+        const allEntries = result.list;
+        
+        // 2. Agrupa as entradas por número de lote
+        const lotesAgrupados = allEntries.reduce((acc, entry) => {
+            const loteNum = entry.Lote;
+            if (!acc[loteNum]) {
+                acc[loteNum] = {
+                    totalRecebido: 0,
+                    totalConsumido: 0,
+                    entries: []
+                };
+            }
+            acc[loteNum].totalRecebido += (entry.Quantidade || 0);
+            acc[loteNum].entries.push({ id: entry.Id, data: entry.Data });
+            return acc;
+        }, {});
 
+        // 3. Calcula o consumo para cada lote
+        const allEntryIds = allEntries.map(e => e.Id);
+        const producoesRelacionadas = producaoData.filter(p => p.Emaf_Estoque && allEntryIds.includes(p.Emaf_Estoque.Id));
+
+        producoesRelacionadas.forEach(prod => {
+            const entryId = prod.Emaf_Estoque.Id;
+            const entry = allEntries.find(e => e.Id === entryId);
+            if (entry && lotesAgrupados[entry.Lote]) {
+                lotesAgrupados[entry.Lote].totalConsumido += (prod.Qtde_Insumo || 0);
+            }
+        });
+
+        // 4. Encontra o primeiro lote (mais antigo) com saldo disponível
+        let loteAtivoEncontrado = null;
+        for (const entry of allEntries) {
+            const loteNum = entry.Lote;
+            const saldoLote = lotesAgrupados[loteNum].totalRecebido - lotesAgrupados[loteNum].totalConsumido;
+            
+            // Usamos uma pequena margem para evitar problemas com ponto flutuante
+            if (saldoLote > 0.01) {
+                loteAtivoEncontrado = {
+                    lote: loteNum,
+                    saldo: saldoLote,
+                    quantidadeInicial: lotesAgrupados[loteNum].totalRecebido,
+                    // Armazenamos o ID da entrada específica que será usada (a mais antiga do lote)
+                    entryId: lotesAgrupados[loteNum].entries[0].id 
+                };
+                break; // Para o loop assim que encontrar o primeiro lote com saldo
+            }
+        }
+
+        // 5. Atualiza a UI
+        if (loteAtivoEncontrado) {
+            activeLoteProducao = loteAtivoEncontrado; // Armazena as informações do lote ativo
             infoBox.innerHTML = `
-                <p><strong>Lote Ativo:</strong> <span class="font-semibold text-brand-gold">${loteAtivo.Lote}</span></p>
-                <p><strong>Quantidade Inicial:</strong> ${loteAtivo.Quantidade.toLocaleString('pt-BR')} Kg</p>
-                <p class="text-lg"><strong>Saldo Disponível:</strong> <span class="font-bold text-green-500">${saldo.toLocaleString('pt-BR')} Kg</span></p>
+                <p><strong>Lote Ativo:</strong> <span class="font-semibold text-brand-gold">${loteAtivoEncontrado.lote}</span></p>
+                <p><strong>Quantidade Inicial (Total do Lote):</strong> ${loteAtivoEncontrado.quantidadeInicial.toLocaleString('pt-BR')} Kg</p>
+                <p class="text-lg"><strong>Saldo Disponível:</strong> <span class="font-bold text-green-500">${loteAtivoEncontrado.saldo.toLocaleString('pt-BR')} Kg</span></p>
             `;
         } else {
-            infoBox.innerHTML = '<p class="text-red-500 font-semibold">Nenhum lote ativo encontrado para esta combinação.</p>';
+            infoBox.innerHTML = '<p class="text-red-500 font-semibold">Todos os lotes para este produto estão esgotados.</p>';
         }
 
         hideLoadingOverlay();
     }
 }
 
+async function checkAndFinalizeLote(loteNumber) {
+    if (!loteNumber) return;
 
-async function checkAndFinalizeLote(loteId) {
-    const lote = estoqueData.find(e => e.Id === loteId);
-    if (!lote) return;
+    // 1. Encontrar todas as entradas para este número de lote
+    const loteEntries = estoqueData.filter(e => e.Lote === loteNumber && e.Status === 'Recebido');
+    if (loteEntries.length === 0) return;
 
-    // Recalcula o consumo total para ter certeza
-    // Use o ID da tabela de produção aqui
-    const consumidoEndpoint = `${TABLE_NAME_MAP.producao}?fields=Qtde_Insumo&where=(Emaf_Estoque_id,eq,${loteId})`;
-    const consumidoResult = await nocoFetch(consumidoEndpoint);
-    const totalConsumido = consumidoResult.list.reduce((sum, item) => sum + (item.Qtde_Insumo || 0), 0);
+    const loteEntryIds = loteEntries.map(e => e.Id);
 
-    if ((lote.Quantidade || 0) - totalConsumido <= 0) {
-        // O saldo zerou ou ficou negativo, então finaliza o lote
-        await nocoFetch(`${TABLE_NAME_MAP.estoque}/${loteId}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ Status_Lote: 'Finalizado' })
+    // 2. Calcular o total recebido para este lote
+    const totalRecebido = loteEntries.reduce((sum, entry) => sum + (entry.Quantidade || 0), 0);
+    
+    // 3. Calcular o total consumido deste lote
+    const producoesDoLote = producaoData.filter(p => p.Emaf_Estoque && loteEntryIds.includes(p.Emaf_Estoque.Id));
+    const totalConsumido = producoesDoLote.reduce((sum, prod) => sum + (prod.Qtde_Insumo || 0), 0);
+
+    // 4. Verificar o saldo e atualizar se necessário
+    if (totalRecebido - totalConsumido <= 0.01) { // Usamos uma pequena tolerância para evitar problemas com ponto flutuante
+        console.log(`Lote ${loteNumber} esgotado. Finalizando todas as suas entradas.`);
+        
+        // Prepara uma lista de promises para atualizar todos os registros de uma vez
+        const updatePromises = loteEntryIds.map(id => {
+            return nocoFetch(`${TABLE_NAME_MAP.estoque}/${id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ Status_Lote: 'Finalizado' })
+            });
         });
+
+        try {
+            await Promise.all(updatePromises);
+            console.log(`Lote ${loteNumber} finalizado com sucesso.`);
+            // A atualização dos dados locais será feita pelo refreshCurrentView()
+        } catch (error) {
+            console.error(`Falha ao finalizar o lote ${loteNumber}:`, error);
+        }
     }
 }
+
+
 async function handleLiofilizacaoFormSubmit(e) {
     e.preventDefault();
     if (!activeProducaoItem) return;
@@ -2170,7 +2227,7 @@ async function handleProducaoDelete() {
     activeProducaoItem = null;
 }
 
-// ======================================================================
+
 async function handleProducaoFormSubmit(e) {
     e.preventDefault();
 
@@ -2178,11 +2235,13 @@ async function handleProducaoFormSubmit(e) {
     const id = form.querySelector('#producao-Id').value;
     const method = id ? 'PATCH' : 'POST';
 
-    if (!activeLoteProducao) {
+    // Validação do Lote Ativo
+    if (!activeLoteProducao || !activeLoteProducao.entryId) {
         alert("Erro: Nenhum lote de Matéria-Prima válido foi selecionado. Por favor, verifique o cliente e o produto.");
         return;
     }
 
+    // Validação da Quantidade
     const qtdeInsumoInput = form.querySelector('#producao-Qtde_Insumo');
     const qtdeInsumoValue = qtdeInsumoInput.value.replace(/\./g, '').replace(',', '.');
     const qtdeInsumo = parseFloat(qtdeInsumoValue);
@@ -2192,7 +2251,8 @@ async function handleProducaoFormSubmit(e) {
         return;
     }
 
-    const saldoDisponivel = id ? (activeLoteProducao.saldo + activeProducaoItem.Qtde_Insumo) : activeLoteProducao.saldo;
+    // Calcula o saldo disponível, considerando se é uma edição
+    const saldoDisponivel = id ? (activeLoteProducao.saldo + (activeProducaoItem?.Qtde_Insumo || 0)) : activeLoteProducao.saldo;
     
     if (qtdeInsumo > saldoDisponivel) {
         alert(`Erro: A quantidade a utilizar (${qtdeInsumo.toLocaleString('pt-BR')} Kg) é maior que o saldo disponível no lote (${saldoDisponivel.toLocaleString('pt-BR')} Kg).`);
@@ -2201,27 +2261,28 @@ async function handleProducaoFormSubmit(e) {
 
     showLoadingOverlay(id ? 'Atualizando...' : 'Criando...');
     
+    const nowISO = new Date().toISOString();
+
+    // Monta o corpo da requisição
     const body = {
         Qtde_Insumo: qtdeInsumo,
         Observacao: form.querySelector('#producao-Observacao').value,
     };
-    
-    const nowISO = new Date().toISOString(); // Pega a data/hora atual uma vez
 
-    // NocoDB usa formatos diferentes para POST (criar) e PATCH (atualizar) relacionamentos
     if (method === 'POST') {
         body.Emaf_Clientes = { Id: parseInt(form.querySelector('#producao-Cliente').value) };
         body.Emaf_Produto = { Id: parseInt(form.querySelector('#producao-Produto').value) };
         body.Emaf_Equipe = { Id: parseInt(form.querySelector('#producao-Equipe').value) };
-        body.Emaf_Estoque = { Id: activeLoteProducao.Id };
+        // AQUI USAMOS O 'entryId' ARMAZENADO PARA LIGAR À ENTRADA DE ESTOQUE CORRETA
+        body.Emaf_Estoque = { Id: activeLoteProducao.entryId };
         body.Status = 'Processamento';
-        body.Inicio_Preparo = nowISO; // Usa a data/hora atual para o início do preparo
-        body.Turno = getTurno(nowISO); // <<<---- AQUI É A MUDANÇA PRINCIPAL
+        body.Inicio_Preparo = nowISO;
+        body.Turno = getTurno(nowISO);
     } else { // PATCH
         body.Emaf_Clientes_id = parseInt(form.querySelector('#producao-Cliente').value);
         body.Emaf_Produto_id = parseInt(form.querySelector('#producao-Produto').value);
         body.Emaf_Equipe_id = parseInt(form.querySelector('#producao-Equipe').value);
-        body.Emaf_Estoque_id = activeLoteProducao.Id;
+        body.Emaf_Estoque_id = activeLoteProducao.entryId;
     }
 
     const endpoint = id ? `${TABLE_NAME_MAP.producao}/${id}` : TABLE_NAME_MAP.producao;
@@ -2233,7 +2294,14 @@ async function handleProducaoFormSubmit(e) {
 
     if (result) {
         hideModal(document.getElementById('producao-modal'));
-        await checkAndFinalizeLote(activeLoteProducao.Id);
+        
+        // Atualiza a lista de produção ANTES de checar o lote, para ter o dado mais recente
+        await fetchProducao();
+        
+        // Checa e finaliza o lote se necessário
+        await checkAndFinalizeLote(activeLoteProducao.lote);
+        
+        // Atualiza a visão completa
         await refreshCurrentView(); 
     }
     

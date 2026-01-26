@@ -926,11 +926,11 @@ const charts = {
 };
     // --- Mapeamento de Nomes de Tabela ---
     const TABLE_NAME_MAP = {
-        equipe: 'Emaf_Equipe',
-        clientes: 'Emaf_Clientes',
-        produtos: 'Emaf_Produto',
-        estoque: 'Emaf_Estoque',
-        producao: 'Emaf_Producao'
+        equipe: 'm8kxb95la3bq1u1',
+        clientes: 'm3nzvi1j1wuddtv',
+        produtos: 'mk8g5ipopo3t08i',
+        estoque: 'm23cve24fkfq4fg',
+        producao: 'm636w6ysa5pttmc'
     };
    const TODAS_ESTUFAS = ['A', 'B', 'C', 'D'];
    const TODOS_CONTAINERS = ['Container 1', 'Container 2', 'In Natura'];
@@ -1902,27 +1902,28 @@ async function fetchAllData() {
 }
 
     async function fetchEquipe() {
-        const result = await nocoFetch('Emaf_Equipe?nested[all]=true');
+        const result = await nocoFetch(`${TABLE_NAME_MAP.equipe}?nested[all]=true`);
         equipeData = (result && result.list) ? result.list.sort((a, b) => a.Nome.localeCompare(b.Nome)) : [];
     }
     async function fetchClientes() {
-        const result = await nocoFetch('Emaf_Clientes');
+        const result = await nocoFetch(TABLE_NAME_MAP.clientes);
         clientesData = (result && result.list) ? result.list.sort((a, b) => a.Cliente.localeCompare(b.Cliente)) : [];
     }
     async function fetchProdutos() {
-        const result = await nocoFetch('Emaf_Produto');
+        const result = await nocoFetch(TABLE_NAME_MAP.produtos);
         produtosData = (result && result.list) ? result.list.sort((a, b) => a.Produto.localeCompare(b.Produto)) : [];
     }
     async function fetchEstoque() {
-        const result = await nocoFetch('Emaf_Estoque?nested[all]=true');
+        const result = await nocoFetch(`${TABLE_NAME_MAP.estoque}?nested[all]=true`);
         estoqueData = (result && result.list) ? result.list.sort((a, b) => new Date(b.Data) - new Date(a.Data)) : [];
     }
     async function fetchProducao() {
-    // Usamos nested[all]=true para já trazer os dados das tabelas relacionadas (cliente, produto, etc.)
-    const result = await nocoFetch('Emaf_Producao?nested[all]=true&fields=*');
-    producaoData = (result && result.list) ? result.list : [];
-}
+        // Usamos nested[all]=true para já trazer os dados das tabelas relacionadas (cliente, produto, etc.)
+        const result = await nocoFetch(`${TABLE_NAME_MAP.producao}?nested[all]=true&fields=*`);
+        producaoData = (result && result.list) ? result.list : [];
+    }
 
+    // --- Autenticação e Sessão ---
     // --- Autenticação e Sessão ---
     async function handleLogin(e) {
         e.preventDefault();
@@ -1932,7 +1933,8 @@ async function fetchAllData() {
 
         showLoadingOverlay('Autenticando...');
         
-        const endpoint = `Emaf_Equipe?where=(Login,eq,${username})~and(Senha,eq,${password})`;
+        // Use o ID da tabela de equipe
+        const endpoint = `${TABLE_NAME_MAP.equipe}?where=(Login,eq,${username})~and(Senha,eq,${password})`;
         const result = await nocoFetch(endpoint);
         
         hideLoadingOverlay();
@@ -2874,9 +2876,13 @@ async function handleProducaoSelectChange(event) {
         }
 
         // Monta a query para buscar lotes ativos e recebidos para o cliente
+        // Nota: Mantemos os nomes das colunas (Emaf_Clientes_id) assumindo que o alias da coluna não mudou.
+        // Se der erro de coluna não encontrada, precisaremos verificar o ID da coluna de relacionamento.
         const whereClause = `(Emaf_Clientes_id,eq,${clienteId})~and(Status_Lote,eq,Ativo)~and(Status,eq,Recebido)`;
         const nestedClause = `nested[Emaf_Produto][fields]=Id,Produto`;
-        const lotesAtivosEndpoint = `Emaf_Estoque?where=${encodeURIComponent(whereClause)}&${nestedClause}`;
+        
+        // Use o ID da tabela de estoque
+        const lotesAtivosEndpoint = `${TABLE_NAME_MAP.estoque}?where=${encodeURIComponent(whereClause)}&${nestedClause}`;
         
         const result = await nocoFetch(lotesAtivosEndpoint);
 
@@ -2910,14 +2916,16 @@ async function handleProducaoSelectChange(event) {
         showLoadingOverlay('Buscando lote ativo...');
 
         const whereClause = `(Emaf_Clientes_id,eq,${clienteId})~and(Emaf_Produto_id,eq,${produtoId})~and(Status_Lote,eq,Ativo)~and(Status,eq,Recebido)`;
-        const endpoint = `Emaf_Estoque?where=${encodeURIComponent(whereClause)}&limit=1`;
+        // Use o ID da tabela de estoque
+        const endpoint = `${TABLE_NAME_MAP.estoque}?where=${encodeURIComponent(whereClause)}&limit=1`;
         
         const result = await nocoFetch(endpoint);
 
         if (result && result.list && result.list.length > 0) {
             const loteAtivo = result.list[0];
 
-            const consumidoEndpoint = `Emaf_Producao?fields=Qtde_Insumo&where=(Emaf_Estoque_id,eq,${loteAtivo.Id})`;
+            // Use o ID da tabela de produção
+            const consumidoEndpoint = `${TABLE_NAME_MAP.producao}?fields=Qtde_Insumo&where=(Emaf_Estoque_id,eq,${loteAtivo.Id})`;
             const consumidoResult = await nocoFetch(consumidoEndpoint);
             
             const totalConsumido = consumidoResult.list.reduce((sum, item) => sum + (item.Qtde_Insumo || 0), 0);
@@ -2944,7 +2952,8 @@ async function checkAndFinalizeLote(loteId) {
     if (!lote) return;
 
     // Recalcula o consumo total para ter certeza
-    const consumidoEndpoint = `Emaf_Producao?fields=Qtde_Insumo&where=(Emaf_Estoque_id,eq,${loteId})`;
+    // Use o ID da tabela de produção aqui
+    const consumidoEndpoint = `${TABLE_NAME_MAP.producao}?fields=Qtde_Insumo&where=(Emaf_Estoque_id,eq,${loteId})`;
     const consumidoResult = await nocoFetch(consumidoEndpoint);
     const totalConsumido = consumidoResult.list.reduce((sum, item) => sum + (item.Qtde_Insumo || 0), 0);
 
