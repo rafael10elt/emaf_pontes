@@ -736,35 +736,110 @@ function updateProducaoTempoChart(data) {
 
 function updateEficienciaProdutoChart(data) {
     const ctx = document.getElementById('eficiencia-produto-chart').getContext('2d');
-    const finalizados = data.filter(d => d.Status === 'Finalizado');
+    const finalizados = data.filter(d => d.Status === 'Finalizado' && d.Qtde_Insumo > 0 && d.Qtde_Final > 0 && d.Inicio_Preparo && d.Finalizado);
     const getDurationInHours = (start, end) => (new Date(end) - new Date(start)) / 3600000;
 
+    // Agrupa os dados por produto para calcular as médias
     const byProduto = finalizados.reduce((acc, item) => {
         const nome = item.Emaf_Produto?.Produto || 'N/A';
-        if (!acc[nome]) acc[nome] = { duracao: [], rendimento: [], qtdFinal: 0 };
-        acc[nome].duracao.push(getDurationInHours(item.Inicio_Preparo, item.Finalizado));
-        acc[nome].rendimento.push((item.Qtde_Final / item.Qtde_Insumo) * 100);
-        acc[nome].qtdFinal += item.Qtde_Final || 0;
+        if (!acc[nome]) {
+            acc[nome] = { duracoes: [], rendimentos: [] };
+        }
+        acc[nome].duracoes.push(getDurationInHours(item.Inicio_Preparo, item.Finalizado));
+        acc[nome].rendimentos.push((item.Qtde_Final / item.Qtde_Insumo) * 100);
         return acc;
     }, {});
-    
-    const colors = ['#BFA16A', '#373737', '#10B981', '#EF4444', '#3B82F6', '#F59E0B'];
-    let colorIndex = 0;
-    const datasets = Object.keys(byProduto).map(produto => {
-        const avgDuration = byProduto[produto].duracao.reduce((a, b) => a + b, 0) / byProduto[produto].duracao.length;
-        const avgRendimento = byProduto[produto].rendimento.reduce((a, b) => a + b, 0) / byProduto[produto].rendimento.length;
-        const sumQtdFinal = byProduto[produto].qtdFinal;
-        
-        return {
-            label: produto,
-            data: [{ x: avgDuration, y: avgRendimento, r: Math.sqrt(sumQtdFinal) * 2 }], // Raiz quadrada para não ficar tão grande
-            backgroundColor: colors[colorIndex++ % colors.length]
-        };
-    });
-    
-    const chartData = { datasets };
-    const options = { ...getChartDefaultOptions(), scales: { x: { title: { display: true, text: 'Tempo Médio de Ciclo (Horas)' } }, y: { title: { display: true, text: 'Rendimento Médio (%)' } } } };
-    createChart(ctx, 'bubble', chartData, options, 'eficienciaProdutoChart');
+
+    const produtos = Object.keys(byProduto);
+    const avgRendimentos = produtos.map(p => byProduto[p].rendimentos.reduce((a, b) => a + b, 0) / byProduto[p].rendimentos.length);
+    const avgDuracoes = produtos.map(p => byProduto[p].duracoes.reduce((a, b) => a + b, 0) / byProduto[p].duracoes.length);
+
+    // Estrutura de dados para o novo gráfico de barras
+    const chartData = {
+        labels: produtos,
+        datasets: [
+            {
+                label: 'Rendimento Médio (%)',
+                data: avgRendimentos,
+                backgroundColor: 'rgba(16, 185, 129, 0.6)', // Verde
+                borderColor: 'rgba(16, 185, 129, 1)',
+                yAxisID: 'yRendimento',
+                borderWidth: 1
+            },
+            {
+                label: 'Tempo Médio de Ciclo (Horas)',
+                data: avgDuracoes,
+                backgroundColor: 'rgba(245, 158, 11, 0.6)', // Laranja/Ambar
+                borderColor: 'rgba(245, 158, 11, 1)',
+                yAxisID: 'yTempo',
+                borderWidth: 1
+            }
+        ]
+    };
+
+    // Opções do gráfico, incluindo dois eixos Y para escalas diferentes
+    const options = { 
+        ...getChartDefaultOptions(), 
+        scales: { 
+            // Eixo Y para o Rendimento (à esquerda)
+            yRendimento: { 
+                type: 'linear', 
+                display: true, 
+                position: 'left',
+                title: {
+                    display: true,
+                    text: 'Rendimento (%)',
+                    color: 'rgba(16, 185, 129, 1)'
+                },
+                ticks: {
+                    color: 'rgba(16, 185, 129, 1)',
+                    callback: value => value.toFixed(1) + '%'
+                }
+            },
+            // Eixo Y para o Tempo (à direita)
+            yTempo: {
+                type: 'linear', 
+                display: true, 
+                position: 'right',
+                title: {
+                    display: true,
+                    text: 'Tempo (Horas)',
+                    color: 'rgba(245, 158, 11, 1)'
+                },
+                ticks: {
+                    color: 'rgba(245, 158, 11, 1)',
+                    callback: value => value.toFixed(1) + 'h'
+                },
+                grid: {
+                    drawOnChartArea: false // Evita linhas de grade sobrepostas
+                }
+            }
+        },
+        plugins: {
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        let label = context.dataset.label || '';
+                        if (label) {
+                            label += ': ';
+                        }
+                        if (context.parsed.y !== null) {
+                            label += context.parsed.y.toFixed(2);
+                            if (context.dataset.yAxisID === 'yRendimento') {
+                                label += '%';
+                            } else {
+                                label += ' horas';
+                            }
+                        }
+                        return label;
+                    }
+                }
+            }
+        }
+    };
+
+    // Cria o novo gráfico
+    createChart(ctx, 'bar', chartData, options, 'eficienciaProdutoChart');
 }
 
 function updateGargaloWipChart(data) {
