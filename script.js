@@ -29,6 +29,7 @@ let activeLoteProducao = null;
 let activeProducaoItem = null;
 let currentProducaoView = 'kanban';
 let currentDashboardTab = 'estoque';
+let pendingProducaoRenderFrame = null;
 
 // Objeto para gerenciar as instâncias dos gráficos
 const charts = {
@@ -556,6 +557,16 @@ function updateDashboard() {
         updateProducaoDashboard();
     }
 }
+function scheduleNextFrame(callback) {
+    if (pendingProducaoRenderFrame) {
+        cancelAnimationFrame(pendingProducaoRenderFrame);
+    }
+
+    pendingProducaoRenderFrame = requestAnimationFrame(() => {
+        pendingProducaoRenderFrame = null;
+        callback();
+    });
+}
 function updateProducaoDashboard() {
     const startDate = document.getElementById('dash-prod-start-date').value;
     const endDate = document.getElementById('dash-prod-end-date').value;
@@ -864,30 +875,37 @@ function renderPerformanceRecursosTable(data) {
     const responsaveis = [...new Set(data.map(d => d.Emaf_Equipe?.Nome || 'N/A'))];
     const estufas = ['A', 'B', 'C', 'D'];
 
-    const pivotData = responsaveis.map(r => {
-        const row = { responsavel: r };
-        estufas.forEach(e => {
-            row[e] = data.filter(d => d.Emaf_Equipe?.Nome === r && d.Estufa == e).length;
-        });
-        return row;
-    });
+    const pivotMap = data.reduce((acc, item) => {
+        const responsavel = item.Emaf_Equipe?.Nome || 'N/A';
+        if (!acc[responsavel]) {
+            acc[responsavel] = { responsavel, A: 0, B: 0, C: 0, D: 0 };
+        }
+        if (item.Estufa && acc[responsavel][item.Estufa] !== undefined) {
+            acc[responsavel][item.Estufa]++;
+        }
+        return acc;
+    }, {});
+
+    const pivotData = responsaveis.map(r => pivotMap[r] || { responsavel: r, A: 0, B: 0, C: 0, D: 0 });
 
     let tableHTML = `<table class="w-full text-sm text-center"><thead><tr class="border-b">
         <th class="p-2 text-left">Responsável</th>`;
     estufas.forEach(e => tableHTML += `<th class="p-2">Estufa ${e}</th>`);
     tableHTML += `</tr></thead><tbody>`;
 
-    pivotData.forEach(row => {
-        tableHTML += `<tr class="border-b dark:border-gray-700">
-            <td class="p-2 text-left font-semibold">${row.responsavel}</td>`;
-        estufas.forEach(e => {
-            const count = row[e];
+    tableHTML += pivotData.map(row => {
+        const cells = estufas.map(e => {
+            const count = row[e] || 0;
             const bgColor = count > 0 ? `bg-blue-${Math.min(count * 100 + 100, 700)}` : '';
             const textColor = count > 2 ? 'text-white' : '';
-            tableHTML += `<td class="p-2 ${bgColor} ${textColor}">${count}</td>`;
-        });
-        tableHTML += `</tr>`;
-    });
+            return `<td class="p-2 ${bgColor} ${textColor}">${count}</td>`;
+        }).join('');
+
+        return `<tr class="border-b dark:border-gray-700">
+            <td class="p-2 text-left font-semibold">${row.responsavel}</td>
+            ${cells}
+        </tr>`;
+    }).join('');
     tableHTML += `</tbody></table>`;
     container.innerHTML = tableHTML;
 }
@@ -896,14 +914,13 @@ function renderDetalhamentoProducaoTable(data) {
     const tbody = document.getElementById('detalhamento-producao-tbody');
     const finalizados = data.filter(d => d.Status === 'Finalizado').sort((a,b) => new Date(b.Finalizado) - new Date(a.Finalizado));
 
-    tbody.innerHTML = '';
-    finalizados.forEach(item => {
+    tbody.innerHTML = finalizados.map(item => {
         const rendimento = (item.Qtde_Final / item.Qtde_Insumo) * 100;
         let rendimentoClass = 'text-gray-500';
         if (rendimento > 15) rendimentoClass = 'text-green-500'; // Ex: > 15% é bom
         if (rendimento < 10) rendimentoClass = 'text-red-500';   // Ex: < 10% é ruim
 
-        tbody.innerHTML += `<tr class="border-b dark:border-gray-700">
+        return `<tr class="border-b dark:border-gray-700">
             <td class="px-4 py-2 font-semibold">${item.Emaf_Produto?.Produto || 'N/A'}</td>
             <td class="px-4 py-2">${item.Emaf_Clientes?.Cliente || 'N/A'}</td>
             <td class="px-4 py-2">${formatTimestamp(item.Finalizado)}</td>
@@ -912,7 +929,7 @@ function renderDetalhamentoProducaoTable(data) {
             <td class="px-4 py-2 text-right font-bold ${rendimentoClass}">${rendimento.toFixed(1)}%</td>
             <td class="px-4 py-2 text-right">${calculateDuration(item.Inicio_Preparo, item.Finalizado)}</td>
         </tr>`;
-    });
+    }).join('');
 }
 
     function updateKPIs(data) {
@@ -1226,22 +1243,22 @@ async function initializeUserSession(user) {
         switch (targetId) {
             case 'dashboard':
                 // O timeout ajuda a garantir que a página esteja visível antes de desenhar os gráficos
-                setTimeout(updateDashboard, 50); 
+                scheduleNextFrame(updateDashboard); 
                 break;
             case 'estoque':
-                applyAndRenderEstoque();
+                scheduleNextFrame(applyAndRenderEstoque);
                 break;
             case 'producao':
-                applyAndRenderProducao();
+                scheduleNextFrame(applyAndRenderProducao);
                 break;
             case 'equipe':
-                applyAndRenderEquipe();
+                scheduleNextFrame(applyAndRenderEquipe);
                 break;
             case 'clientes':
-                applyAndRenderClientes();
+                scheduleNextFrame(applyAndRenderClientes);
                 break;
             case 'produtos':
-                applyAndRenderProdutos();
+                scheduleNextFrame(applyAndRenderProdutos);
                 break;
         }
     }
@@ -1400,11 +1417,8 @@ function renderEstoque(data) {
         const statusClass = getStatusClass(item.Status);
         const dataFormatada = item.Data ? new Date(item.Data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short'}) : 'N/A';
         
-        // Calcular Saldo
-        // Filtra os registros de produção que usaram este lote específico de estoque
-        const consumos = producaoData.filter(p => p.Emaf_Estoque && p.Emaf_Estoque.Id === item.Id);
-        // Soma a quantidade de insumo utilizada em todas as produções
-        const totalConsumido = consumos.reduce((sum, prod) => sum + (prod.Qtde_Insumo || 0), 0);
+        // Calcula o saldo usando um mapa pré-agregado
+        const totalConsumido = consumoPorEstoqueId[item.Id] || 0;
         // Calcula o saldo
         const saldo = (item.Quantidade || 0) - totalConsumido;
         
@@ -1423,7 +1437,7 @@ function renderEstoque(data) {
         `;
         
         // Tabela
-        tbody.innerHTML += `
+        tableRows.push(`
             <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700" data-id="${item.Id}" data-type="estoque">
                 <td class="px-6 py-4">${dataFormatada}</td>
                 <td class="px-6 py-4">${item.Emaf_Clientes?.Cliente || 'N/A'}</td>
@@ -1434,10 +1448,10 @@ function renderEstoque(data) {
                 <td class="px-6 py-4 text-right">${formatQuantity(item.Quantidade)}</td>
                 <td class="px-6 py-4 text-right ${saldoClass}">${formatQuantity(saldo)}</td> <td class="px-6 py-4"><span class="text-xs font-semibold px-2 py-0.5 rounded-full ${statusClass}">${item.Status}</span></td>
                 <td class="px-6 py-4 space-x-2 text-center">${actionsHTML}</td>
-            </tr>`;
+            </tr>`);
 
         // Cards (Atualizando também o card para mostrar o saldo)
-        cardsContainer.innerHTML += `
+        cardRows.push(`
             <div class="p-4 bg-white rounded-lg shadow dark:bg-gray-800 border dark:border-gray-700" data-id="${item.Id}" data-type="estoque">
                 <div class="flex justify-between items-start">
                     <div>
@@ -1456,8 +1470,11 @@ function renderEstoque(data) {
                     </div>
                 </div>
                 <div class="flex justify-end pt-2 mt-2 border-t dark:border-gray-600 space-x-2">${actionsHTML}</div>
-            </div>`;
+            </div>`);
     });
+
+    tbody.innerHTML = tableRows.join('');
+    cardsContainer.innerHTML = cardRows.join('');
 }
 
 function createProducaoCard(item) {
@@ -1598,7 +1615,7 @@ function toggleProducaoView(view) {
         listBtn.classList.add('bg-brand-gold', 'text-white');
         kanbanBtn.classList.remove('bg-brand-gold', 'text-white');
     }
-    applyAndRenderProducao();
+    scheduleNextFrame(applyAndRenderProducao);
 }
 function renderProducaoKanban(data) {
     const columns = {
@@ -1610,10 +1627,30 @@ function renderProducaoKanban(data) {
     // Limpa as colunas antes de renderizar
     Object.values(columns).forEach(col => col.innerHTML = '');
 
-    // 1. SEPARAR os dados por status
-    const preparoItems = data.filter(item => item.Status === 'Processamento');
-    const producaoItems = data.filter(item => item.Status === 'Em Liofilização');
-    const finalizadoItems = data.filter(item => item.Status === 'Finalizado');
+    // 1. SEPARAR os dados por status em uma única passada
+    const preparoItems = [];
+    const producaoItems = [];
+    const finalizadoItems = [];
+
+    const consumoPorEstoqueId = producaoData.reduce((acc, prod) => {
+        const estoqueId = prod.Emaf_Estoque?.Id;
+        if (!estoqueId) return acc;
+        acc[estoqueId] = (acc[estoqueId] || 0) + (prod.Qtde_Insumo || 0);
+        return acc;
+    }, {});
+
+    const tableRows = [];
+    const cardRows = [];
+
+    data.forEach(item => {
+        if (item.Status === 'Processamento') {
+            preparoItems.push(item);
+        } else if (item.Status === 'Em Liofilização') {
+            producaoItems.push(item);
+        } else if (item.Status === 'Finalizado') {
+            finalizadoItems.push(item);
+        }
+    });
 
     // 2. ORDENAR cada lista de acordo com suas regras específicas
     // Processamento: Do mais antigo para o mais novo (ascendente)
@@ -1626,15 +1663,9 @@ function renderProducaoKanban(data) {
     finalizadoItems.sort((a, b) => new Date(b.Finalizado) - new Date(a.Finalizado));
 
     // 3. RENDERIZAR os itens já ordenados em suas respectivas colunas
-    preparoItems.forEach(item => {
-        columns.preparo.innerHTML += createProducaoCard(item);
-    });
-    producaoItems.forEach(item => {
-        columns.producao.innerHTML += createProducaoCard(item);
-    });
-    finalizadoItems.forEach(item => {
-        columns.finalizado.innerHTML += createProducaoCard(item);
-    });
+    columns.preparo.innerHTML = preparoItems.map(item => createProducaoCard(item)).join('');
+    columns.producao.innerHTML = producaoItems.map(item => createProducaoCard(item)).join('');
+    columns.finalizado.innerHTML = finalizadoItems.map(item => createProducaoCard(item)).join('');
 
     // 4. ATUALIZAR os contadores no cabeçalho das colunas
     document.getElementById('count-preparo').textContent = preparoItems.length;
@@ -1830,7 +1861,6 @@ function createProducaoCard(item) {
 function renderProducaoList(data) {
     const tbody = document.getElementById('producao-table-body');
     if (!tbody) return;
-    tbody.innerHTML = '';
 
     const getStatusClass = (status) => {
         switch (status) {
@@ -1878,7 +1908,7 @@ function renderProducaoList(data) {
     // NOVO: Define se o usuário pode gerenciar (editar/apagar)
     const canManageProducao = ['Admin', 'Gestão'].includes(loggedInUser.Role);
 
-    sortedData.forEach(item => {
+    tbody.innerHTML = sortedData.map(item => {
         let actionsHTML = `<button class="action-btn text-gray-500" data-action="details" data-type="producao" title="Ver Detalhes"><i class="fas fa-eye"></i></button>`;
         
         // Permite editar/excluir apenas se estiver em Processamento e tiver a permissão
@@ -1889,7 +1919,7 @@ function renderProducaoList(data) {
             `;
         }
 
-        tbody.innerHTML += `
+        return `
             <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600" data-id="${item.Id}" data-type="producao">
                 <td class="px-6 py-4 whitespace-nowrap"><span class="text-xs font-semibold px-2 py-0.5 rounded-full ${getStatusClass(item.Status)}">${item.Status || 'N/A'}</span></td>
                 <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">
@@ -1908,7 +1938,7 @@ function renderProducaoList(data) {
                 <td class="px-6 py-4 space-x-2 whitespace-nowrap">${actionsHTML}</td>
             </tr>
         `;
-    });
+    }).join('');
 }
 // =================================================================================
     // --- Manipulação de Formulários e Modais ---
