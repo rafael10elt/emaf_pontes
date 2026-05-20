@@ -1465,6 +1465,15 @@ function renderEstoque(data) {
     };
 
     const canManageEstoque = ['Admin', 'Gestão'].includes(loggedInUser.Role);
+    const consumoPorEstoqueId = producaoData.reduce((acc, prod) => {
+        const estoqueId = prod.Emaf_Estoque?.Id;
+        if (!estoqueId) return acc;
+        acc[estoqueId] = (acc[estoqueId] || 0) + (prod.Qtde_Insumo || 0);
+        return acc;
+    }, {});
+
+    const tableRows = [];
+    const cardRows = [];
 
     for (const item of data) {
         const statusClass = getStatusClass(item.Status);
