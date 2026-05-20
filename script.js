@@ -42,6 +42,22 @@ const charts = {
     eficienciaProdutoChart: null,
     gargaloWipChart: null
 };
+
+const dataLoadState = {
+    equipe: false,
+    clientes: false,
+    produtos: false,
+    estoque: false,
+    producao: false
+};
+
+const dataLoaders = {
+    equipe: fetchEquipe,
+    clientes: fetchClientes,
+    produtos: fetchProdutos,
+    estoque: fetchEstoque,
+    producao: fetchProducao
+};
     // --- Mapeamento de Nomes de Tabela ---
     const TABLE_NAME_MAP = {
         equipe: 'm8kxb95la3bq1u1',
@@ -109,13 +125,13 @@ const charts = {
         return 'Diurno';
     }
 }
-    async function refreshCurrentView() {
+async function refreshCurrentView() {
     showLoadingOverlay('Atualizando dados...');
-    await fetchAllData(); // Primeiro, busca os dados mais recentes do servidor.
+    const currentPageId = sessionStorage.getItem('currentPage');
+    const currentRole = loggedInUser?.Role;
+    await fetchAllData(getRefreshDataPack(currentPageId, currentRole), true);
     
     // Pega o ID da página que está visível no momento.
-    const currentPageId = sessionStorage.getItem('currentPage');
-
     // Com base na página atual, chama a função de renderização correspondente.
     switch (currentPageId) {
         case 'dashboard':
@@ -1092,21 +1108,52 @@ function updateMovimentacaoChart(data) {
         const options = { ...getChartDefaultOptions(), indexAxis: 'y', plugins: { legend: { display: false } } };
         createChart(ctx, 'bar', chartData, options, 'recusasProdutoChart');
     }
-    // --- Funções de Carregamento de Dados ---
-async function fetchAllData() {
+// --- Funções de Carregamento de Dados ---
+async function loadDataSet(name, force = false) {
+    if (!force && dataLoadState[name]) return;
+    const loader = dataLoaders[name];
+    if (!loader) return;
+    await loader();
+    dataLoadState[name] = true;
+}
+
+async function loadDataPack(dataNames = [], force = false) {
+    await Promise.all(dataNames.map(name => loadDataSet(name, force)));
+}
+
+function getInitialDataPack(role) {
+    if (role === 'Produção') {
+        return ['estoque', 'producao'];
+    }
+    if (role === 'Gestão') {
+        return ['equipe', 'clientes', 'produtos', 'estoque', 'producao'];
+    }
+    return ['equipe', 'clientes', 'produtos', 'estoque', 'producao'];
+}
+
+function getRefreshDataPack(pageId, role) {
+    switch (pageId) {
+        case 'dashboard':
+            return role === 'Produção' ? ['estoque', 'producao'] : ['equipe', 'clientes', 'produtos', 'estoque', 'producao'];
+        case 'estoque':
+            return ['estoque', 'producao'];
+        case 'producao':
+            return ['estoque', 'producao'];
+        case 'equipe':
+            return ['equipe'];
+        case 'clientes':
+            return ['clientes'];
+        case 'produtos':
+            return ['produtos'];
+        default:
+            return [];
+    }
+}
+
+async function fetchAllData(dataNames = ['equipe', 'clientes', 'produtos', 'estoque', 'producao'], force = false) {
     showLoadingOverlay('Carregando dados do sistema...');
-    await Promise.all([
-        fetchEquipe(),
-        fetchClientes(),
-        fetchProdutos(),
-        fetchEstoque(),
-        fetchProducao()
-    ]);
-    
-    // Apenas preenche os selects que são usados em várias telas
-    populateSelects(); 
-    
-    // As funções de renderização foram movidas para a função navigateTo()
+    await loadDataPack(dataNames, force);
+    populateSelects();
     hideLoadingOverlay();
 }
 
@@ -1217,12 +1264,20 @@ async function initializeUserSession(user) {
         document.getElementById('producao-list-container').classList.add('hidden');
     }
 
-    // --- 3. Carrega dados e navega para a página inicial ---
-    await fetchAllData();
-    
-    // Define a página inicial: Dashboard para Admin, Estoque para os outros
+    // --- 3. Carrega apenas o necessário para a sessão inicial ---
     const initialPage = sessionStorage.getItem('currentPage') || (userRole === 'Admin' ? 'dashboard' : 'estoque');
+    const initialDataPack = getInitialDataPack(userRole);
+
+    await fetchAllData(initialDataPack);
     navigateTo(initialPage);
+
+    // Dados auxiliares e selects podem ser carregados depois, sem travar a tela inicial
+    if (userRole === 'Produção') {
+        setTimeout(async () => {
+            await loadDataPack(['clientes', 'produtos', 'equipe']);
+            populateSelects();
+        }, 0);
+    }
 }
 
     async function checkSession() {
@@ -1401,33 +1456,26 @@ async function initializeUserSession(user) {
 function renderEstoque(data) {
     const tbody = document.getElementById('estoque-table-body');
     const cardsContainer = document.getElementById('estoque-cards-container');
-    tbody.innerHTML = '';
-    cardsContainer.innerHTML = '';
+    if (!tbody || !cardsContainer) return;
+
     const getStatusClass = (status) => status === 'Recebido' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800';
-    
     const formatQuantity = (qty) => {
         if (qty === null || typeof qty === 'undefined') return '0,00';
         return Number(qty).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 5 });
     };
 
-    // NOVO: Permite que Admin E Gestão gerenciem o estoque
-    const canManageEstoque = ['Admin', 'Gestão'].includes(loggedInUser.Role);
+    const canManageEstoque = ['Admin', 'Gest�o'].includes(loggedInUser.Role);
 
-    data.forEach(item => {
+    for (const item of data) {
         const statusClass = getStatusClass(item.Status);
         const dataFormatada = item.Data ? new Date(item.Data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short'}) : 'N/A';
-        
-        // Calcula o saldo usando um mapa pré-agregado
         const totalConsumido = consumoPorEstoqueId[item.Id] || 0;
-        // Calcula o saldo
         const saldo = (item.Quantidade || 0) - totalConsumido;
-        
-        // Define uma cor para o saldo (opcional, mas útil visualmente)
+
         let saldoClass = 'text-gray-900 dark:text-white';
         if (saldo <= 0) saldoClass = 'text-red-600 dark:text-red-400 font-bold';
-        else if (saldo < (item.Quantidade * 0.2)) saldoClass = 'text-yellow-600 dark:text-yellow-400 font-bold'; // Alerta de estoque baixo (< 20%)
+        else if (saldo < (item.Quantidade * 0.2)) saldoClass = 'text-yellow-600 dark:text-yellow-400 font-bold';
 
-        // A lógica de construção dos botões agora usa a nova variável 'canManageEstoque'
         const actionsHTML = `
             <button class="action-btn text-gray-500" data-action="details" title="Ver Detalhes"><i class="fas fa-eye"></i></button>
             ${canManageEstoque ? `
@@ -1435,8 +1483,7 @@ function renderEstoque(data) {
             <button class="action-btn text-red-500" data-action="delete" title="Apagar"><i class="fas fa-trash"></i></button>
             ` : ''}
         `;
-        
-        // Tabela
+
         tableRows.push(`
             <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700" data-id="${item.Id}" data-type="estoque">
                 <td class="px-6 py-4">${dataFormatada}</td>
@@ -1446,11 +1493,11 @@ function renderEstoque(data) {
                 <td class="px-6 py-4">${item.Lote || 'N/A'}</td>
                 <td class="px-6 py-4">${item.Container || 'N/A'}</td>
                 <td class="px-6 py-4 text-right">${formatQuantity(item.Quantidade)}</td>
-                <td class="px-6 py-4 text-right ${saldoClass}">${formatQuantity(saldo)}</td> <td class="px-6 py-4"><span class="text-xs font-semibold px-2 py-0.5 rounded-full ${statusClass}">${item.Status}</span></td>
+                <td class="px-6 py-4 text-right ${saldoClass}">${formatQuantity(saldo)}</td>
+                <td class="px-6 py-4"><span class="text-xs font-semibold px-2 py-0.5 rounded-full ${statusClass}">${item.Status}</span></td>
                 <td class="px-6 py-4 space-x-2 text-center">${actionsHTML}</td>
             </tr>`);
 
-        // Cards (Atualizando também o card para mostrar o saldo)
         cardRows.push(`
             <div class="p-4 bg-white rounded-lg shadow dark:bg-gray-800 border dark:border-gray-700" data-id="${item.Id}" data-type="estoque">
                 <div class="flex justify-between items-start">
@@ -1462,7 +1509,7 @@ function renderEstoque(data) {
                 </div>
                 <div class="mt-2 text-sm text-gray-600 dark:text-gray-400 space-y-1">
                     <p><strong>Cliente:</strong> ${item.Emaf_Clientes?.Cliente || 'N/A'}</p>
-                    <p><strong>Responsável:</strong> ${item.Emaf_Equipe?.Nome || 'N/A'}</p>
+                    <p><strong>Respons�vel:</strong> ${item.Emaf_Equipe?.Nome || 'N/A'}</p>
                     <p><strong>Lote:</strong> ${item.Lote || 'N/A'} | <strong>Container:</strong> ${item.Container || 'N/A'}</p>
                     <div class="flex justify-between border-t border-b border-gray-100 dark:border-gray-700 py-1 mt-1">
                         <p><strong>Qtde Inicial:</strong> ${formatQuantity(item.Quantidade)} Kg</p>
@@ -1471,7 +1518,7 @@ function renderEstoque(data) {
                 </div>
                 <div class="flex justify-end pt-2 mt-2 border-t dark:border-gray-600 space-x-2">${actionsHTML}</div>
             </div>`);
-    });
+    }
 
     tbody.innerHTML = tableRows.join('');
     cardsContainer.innerHTML = cardRows.join('');
@@ -1631,16 +1678,6 @@ function renderProducaoKanban(data) {
     const preparoItems = [];
     const producaoItems = [];
     const finalizadoItems = [];
-
-    const consumoPorEstoqueId = producaoData.reduce((acc, prod) => {
-        const estoqueId = prod.Emaf_Estoque?.Id;
-        if (!estoqueId) return acc;
-        acc[estoqueId] = (acc[estoqueId] || 0) + (prod.Qtde_Insumo || 0);
-        return acc;
-    }, {});
-
-    const tableRows = [];
-    const cardRows = [];
 
     data.forEach(item => {
         if (item.Status === 'Processamento') {
@@ -2873,3 +2910,5 @@ function setupEventListeners() {
     setupEventListeners();
     checkSession();
 });
+
+
